@@ -10,16 +10,17 @@ const fileName = document.getElementById("fileName");
 const contextText = document.getElementById("contextText");
 const dataPreview = document.getElementById("dataPreview");
 const previewCard = document.getElementById("previewCard");
+const columnDescCard = document.getElementById("columnDescCard");
+const columnDescriptions = document.getElementById("columnDescriptions");
 const analysisCard = document.getElementById("analysisCard");
 const summaryCard = document.getElementById("summaryCard");
 const analysisResult = document.getElementById("analysisResult");
 const summaryResult = document.getElementById("summaryResult");
-const analysisSpinner = document.getElementById("analysisSpinner");
-const summarySpinner = document.getElementById("summarySpinner");
 const resetButton = document.getElementById("resetButton");
 const analyzeButton = document.getElementById("analyzeButton");
 const pythonCode = document.getElementById("pythonCode");
 const codeContent = document.getElementById("codeContent");
+const globalLoader = document.getElementById("globalLoader");
 
 // Global variables
 let fileData = null;
@@ -61,7 +62,6 @@ function formatValue(value) {
       return "[Complex Object]";
     }
   }
-
   return value.toString();
 }
 
@@ -171,6 +171,100 @@ function displayDataPreview(data) {
 
   dataPreview.innerHTML = tableHTML;
   previewCard.classList.remove("d-none");
+  
+  // Get column descriptions
+  getColumnDescriptions(data);
+}
+
+// Loading functions
+function showLoading() {
+  globalLoader.classList.remove("d-none");
+}
+
+function hideLoading() {
+  globalLoader.classList.add("d-none");
+}
+
+// Get column descriptions from LLM
+async function getColumnDescriptions(data) {
+  if (!data || !data.length) return;
+  
+  // Show the column descriptions card and loading indicator
+  columnDescCard.classList.remove("d-none");
+  showLoading();
+  columnDescriptions.innerHTML = "";
+  
+  const headers = data[0];
+  const rows = data.slice(1, 6); // Get first 5 rows for preview
+  
+  // Format data for LLM
+  let dataPreviewText = "Data Preview:\n" + headers.join(", ") + "\n" + 
+      rows.map((row) => row.join(", ")).join("\n");
+  
+  // Add context if available
+  const context = contextText.value.trim();
+  const userMessage = context ? `Context: ${context}\n\n${dataPreviewText}` : dataPreviewText;
+  
+  // System prompt for generating column descriptions
+  const systemPrompt = `You are an expert data analyst. Based on the provided data preview, 
+  generate a brief description for each column in the dataset.
+  For each column, provide a clear description of what the column represents
+
+  Format :- 
+{
+  "type": "object",
+  "properties": {
+    "columnDescription": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "columnName": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": ["columnName", "description"]
+      }
+    }
+  },
+  "required": ["columnDescription"]
+}
+`;
+  
+  try {
+    // Get descriptions from LLM
+    const response = await callLLM(systemPrompt, userMessage);
+    
+    // Parse the response (expecting JSON)
+    let columnData;
+    try {
+      // Try to parse as JSON
+      columnData = JSON.parse(response);
+    } catch (e) {
+      console.error("Error parsing column descriptions:", e);
+      return;
+    }
+    
+    // Create table for column descriptions
+    let tableHTML = '<table class="table table-striped table-bordered">';
+    tableHTML += '<thead><tr><th>Column Name</th><th>Description</th></tr></thead>';
+    tableHTML += '<tbody>';
+
+    columnData["columnDescription"].forEach((item) => {
+      tableHTML += `<tr><td><strong>${item.columnName}</strong></td><td>${item.description}</td></tr>`;
+    });
+    tableHTML += '</tbody></table>';  
+    // Display the table
+    columnDescriptions.innerHTML = tableHTML;
+  } catch (error) {
+    console.error("Error getting column descriptions:", error);
+    columnDescriptions.innerHTML = `<div class="alert alert-danger">Error getting column descriptions: ${error.message}</div>`;
+  } finally {
+    hideLoading();
+  }
 }
 
 // Convert array data to object format for easier processing
@@ -192,6 +286,7 @@ function resetApp() {
   fileInput.value = "";
   fileInfo.classList.add("d-none");
   previewCard.classList.add("d-none");
+  columnDescCard.classList.add("d-none");
   analysisCard.classList.add("d-none");
   summaryCard.classList.add("d-none");
   resetButton.classList.add("d-none");
@@ -199,6 +294,7 @@ function resetApp() {
   contextText.value = "";
   fileData = null;
   parsedData = null;
+  hideLoading();
 }
 
 // Analyze the data
@@ -207,7 +303,7 @@ async function analyzeData() {
 
   // Setup UI and prepare data
   analysisCard.classList.remove("d-none");
-  analysisSpinner.style.display = "flex";
+  showLoading();
   analysisResult.innerHTML = "";
   const objectData = arrayToObjectData(parsedData);
 
@@ -244,42 +340,11 @@ Only return valid Python code without any explanations or markdown formatting.`;
     const analysisResults = await executePythonCode(code, objectData);
 
     // Display analysis results
-    analysisSpinner.style.display = "none";
-    let resultsHTML = '<div class="alert alert-info mb-4">Analysis completed successfully!</div>';
-
-    if (analysisResults && typeof analysisResults === "object") {
-      resultsHTML +=
-        '<div class="card mb-4"><div class="card-header"><h6 class="mb-0">Data Quality Analysis Results</h6></div>';
-      resultsHTML += '<div class="card-body">';
-
-      for (const [category, details] of Object.entries(analysisResults)) {
-        resultsHTML += `<h6 class="mt-3">${formatCategoryName(category)}</h6>`;
-
-        if (typeof details === "object") {
-          if (Array.isArray(details)) {
-            // Handle array results
-            resultsHTML += '<ul class="list-group list-group-flush mb-3">';
-            details.forEach((item) => (resultsHTML += `<li class="list-group-item">${item}</li>`));
-            resultsHTML += "</ul>";
-          } else {
-            // Handle object results
-            resultsHTML += '<ul class="list-group list-group-flush mb-3">';
-            Object.entries(details).forEach(([key, value]) => {
-              resultsHTML += `<li class="list-group-item"><strong>${key}:</strong> ${formatValue(value)}</li>`;
-            });
-            resultsHTML += "</ul>";
-          }
-        } else {
-          resultsHTML += `<p>${details}</p>`;
-        }
-      }
-      resultsHTML += "</div></div>";
-    }
-    analysisResult.innerHTML = resultsHTML;
+    hideLoading();
 
     // Generate summary
     summaryCard.classList.remove("d-none");
-    summarySpinner.style.display = "flex";
+    showLoading();
 
     const summarizationPrompt = `You are an expert data quality analyst. 
 Provide a clear, concise summary of the data quality analysis results in markdown format.
@@ -291,12 +356,11 @@ Use bullet points, headers, and formatting to make the summary easy to read.`;
       typeof value === "bigint" ? value.toString() + "n" : value
     );
     const summary = await callLLM(summarizationPrompt, serializedResults);
-    summarySpinner.style.display = "none";
+    hideLoading();
     summaryResult.innerHTML = marked.parse(summary);
   } catch (error) {
     console.error(error);
-    analysisSpinner.style.display = "none";
-    summarySpinner.style.display = "none";
+    hideLoading();
     analysisResult.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
   }
 }

@@ -14,6 +14,14 @@
     }
   </style>
   <body>
+    <!-- Global Loading Spinner -->
+    <div id="globalLoader" class="position-fixed top-0 start-0 w-100 h-100 d-none" style="background-color: rgba(255,255,255,0.7); z-index: 9999;">
+      <div class="d-flex justify-content-center align-items-center h-100">
+        <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+      </div>
+    </div>
     <div class="container mt-4">
       <div class="narrative mx-auto text-center my-4">
         <h1 class="mb-4">Data Quality Analyzer</h1>
@@ -77,17 +85,26 @@
         </div>
       </div>
 
+      <!-- Column Descriptions Section -->
+      <div class="card mb-4 d-none narrative mx-auto" id="columnDescCard">
+        <div class="card-header">
+          <h5 class="mb-0">Column Descriptions</h5>
+        </div>
+        <div class="card-body">
+
+          <div id="columnDescriptions" class="table-responsive overflow-auto">
+            <!-- Column descriptions will be inserted here -->
+          </div>
+        </div>
+      </div>
+
       <!-- Analysis Section -->
       <div class="card mb-4 d-none narrative mx-auto" id="analysisCard">
         <div class="card-header">
           <h5 class="mb-0">Data Quality Analysis</h5>
         </div>
         <div class="card-body">
-          <div class="d-flex justify-content-center" style="display: none" id="analysisSpinner">
-            <div class="spinner-border text-primary" role="status">
-              <span class="visually-hidden">Loading...</span>
-            </div>
-          </div>
+
           <div id="analysisResult">
             <!-- Analysis results will be inserted here -->
           </div>
@@ -104,11 +121,7 @@
           <h5 class="mb-0">Summary</h5>
         </div>
         <div class="card-body">
-          <div class="d-flex justify-content-center" style="display: none" id="summarySpinner">
-            <div class="spinner-border text-primary" role="status">
-              <span class="visually-hidden">Loading...</span>
-            </div>
-          </div>
+
           <div id="summaryResult">
             <!-- Summary will be inserted here -->
           </div>
