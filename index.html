@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Quality Analyzer</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap already provides most styling needs -->
+</head>
+<body>
+    <div class="container mt-4">
+        <h1 class="mb-4">Data Quality Analyzer</h1>
+        
+        <!-- File Upload Section -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Upload File</h5>
+            </div>
+            <div class="card-body">
+                <div class="border border-2 border-dashed rounded p-4 text-center mb-3" style="cursor: pointer;" id="dropZone">
+                    <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" class="d-none">
+                    <div>
+                        <i class="bi bi-upload fs-2"></i>
+                        <p>Drag and drop your Excel or CSV file here, or click to browse</p>
+                        <button class="btn btn-primary" id="browseButton">Browse Files</button>
+                    </div>
+                </div>
+                <div class="mt-2 small d-none" id="fileInfo">
+                    <div class="alert alert-success">
+                        <strong>File selected:</strong> <span id="fileName"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Context Section (Collapsible) -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <button class="btn btn-link text-decoration-none p-0" type="button" data-bs-toggle="collapse" data-bs-target="#contextCollapse">
+                    <h5 class="mb-0">Add Context (Optional)</h5>
+                </button>
+            </div>
+            <div class="collapse" id="contextCollapse">
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="contextText" class="form-label">Provide additional context about the data:</label>
+                        <textarea class="form-control" id="contextText" rows="3" placeholder="Enter any additional information about the file or data that might be helpful for analysis..."></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Data Preview Section -->
+        <div class="card mb-4 d-none" id="previewCard">
+            <div class="card-header">
+                <h5 class="mb-0">Data Preview</h5>
+            </div>
+            <div class="card-body">
+                <div id="dataPreview" class="table-responsive overflow-auto">
+                    <!-- Table will be inserted here -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- Analysis Section -->
+        <div class="card mb-4 d-none" id="analysisCard">
+            <div class="card-header">
+                <h5 class="mb-0">Data Quality Analysis</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-center" style="display: none;" id="analysisSpinner">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+                <div id="analysisResult">
+                    <!-- Analysis results will be inserted here -->
+                </div>
+                <div id="pythonCode" class="bg-light p-3 rounded my-3 overflow-auto d-none">
+                    <h6>Generated Python Code:</h6>
+                    <pre><code id="codeContent"></code></pre>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Summary Section -->
+        <div class="card mb-4 d-none" id="summaryCard">
+            <div class="card-header">
+                <h5 class="mb-0">Summary</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-center" style="display: none;" id="summarySpinner">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+                <div id="summaryResult">
+                    <!-- Summary will be inserted here -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- Action Buttons -->
+        <div class="d-flex justify-content-end mb-5">
+            <button class="btn btn-secondary me-2 d-none" id="resetButton">Reset</button>
+            <button class="btn btn-primary d-none" id="analyzeButton">Analyze Data</button>
+        </div>
+    </div>
+
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- XLSX Library -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- Marked for Markdown rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Custom JS -->
+    <script src="script.js" type="module"></script>
+</body>
+</html>
