@@ -287,7 +287,7 @@ Highlight the most important findings and provide actionable recommendations to 
 Use bullet points, headers, and formatting to make the summary easy to read.`;
 
     // Use our existing formatValue function to handle complex types including BigInt
-    const serializedResults = JSON.stringify(analysisResults, (key, value) => 
+    const serializedResults = JSON.stringify(analysisResults, (key, value) =>
       typeof value === "bigint" ? value.toString() + "n" : value
     );
     const summary = await callLLM(summarizationPrompt, serializedResults);
