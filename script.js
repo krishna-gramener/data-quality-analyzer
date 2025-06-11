@@ -1,26 +1,30 @@
 // Import Pyodide worker
 const pyodideWorker = new Worker("./pyworker.js", { type: "module" });
 
-// DOM Elements
+// DOM elements
 const fileInput = document.getElementById("fileInput");
 const dropZone = document.getElementById("dropZone");
 const browseButton = document.getElementById("browseButton");
 const fileInfo = document.getElementById("fileInfo");
 const fileName = document.getElementById("fileName");
+const fileSize = document.getElementById("fileSize");
+const fileType = document.getElementById("fileType");
 const contextText = document.getElementById("contextText");
+const globalLoader = document.getElementById("globalLoader");
 const dataPreview = document.getElementById("dataPreview");
 const previewCard = document.getElementById("previewCard");
 const columnDescCard = document.getElementById("columnDescCard");
 const columnDescriptions = document.getElementById("columnDescriptions");
 const analysisCard = document.getElementById("analysisCard");
 const summaryCard = document.getElementById("summaryCard");
+const issuesCard = document.getElementById("issuesCard");
 const analysisResult = document.getElementById("analysisResult");
 const summaryResult = document.getElementById("summaryResult");
+const issuesResult = document.getElementById("issuesResult");
 const resetButton = document.getElementById("resetButton");
 const analyzeButton = document.getElementById("analyzeButton");
 const pythonCode = document.getElementById("pythonCode");
 const codeContent = document.getElementById("codeContent");
-const globalLoader = document.getElementById("globalLoader");
 
 // Global variables
 let fileData = null;
@@ -185,6 +189,51 @@ function hideLoading() {
   globalLoader.classList.add("d-none");
 }
 
+// Display rows with issues
+function displayIssueRows(issueRows) {
+  if (!issueRows || !issueRows.length) return;
+
+  let tableHTML = '<table class="table table-striped table-bordered">';
+  
+  // Table headers
+  tableHTML += "<thead><tr>";
+  tableHTML += "<th>Row #</th><th>Issue</th>";
+  
+  // Add data column headers if available
+  if (issueRows[0] && issueRows[0].row) {
+    const firstRow = issueRows[0].row;
+    Object.keys(firstRow).forEach(key => {
+      tableHTML += `<th>${key}</th>`;
+    });
+  }
+  tableHTML += "</tr></thead>";
+  
+  // Table body
+  tableHTML += "<tbody>";
+  issueRows.forEach((issueRow) => {
+    tableHTML += "<tr class='table-warning'>"; // Highlight issue rows
+    
+    // Add row index cell
+    tableHTML += `<td>${issueRow.index !== undefined ? issueRow.index : "N/A"}</td>`;
+    
+    // Add issue description cell
+    tableHTML += `<td>${issueRow.issues || "Unknown issue"}</td>`;
+    
+    // Add data cells
+    if (issueRow.row) {
+      Object.values(issueRow.row).forEach((value) => {
+        tableHTML += `<td>${value !== undefined && value !== null ? value : ""}</td>`;
+      });
+    }
+    
+    tableHTML += "</tr>";
+  });
+  tableHTML += "</tbody></table>";
+
+  // Add table to DOM
+  issuesResult.innerHTML = tableHTML;
+}
+
 // Get column descriptions from LLM
 async function getColumnDescriptions(data) {
   if (!data || !data.length) return;
@@ -289,6 +338,7 @@ function resetApp() {
   columnDescCard.classList.add("d-none");
   analysisCard.classList.add("d-none");
   summaryCard.classList.add("d-none");
+  issuesCard.classList.add("d-none");
   resetButton.classList.add("d-none");
   analyzeButton.classList.add("d-none");
   contextText.value = "";
@@ -326,9 +376,30 @@ The code should:
 4. Check for duplicates
 5. Validate data types
 6. Identify any potential data quality issues
+7. Return a comprehensive analysis as a dictionary
+8. Identify and return problematic rows in a separate key called 'issue_rows'
 
 The data will be provided as a pandas DataFrame named 'df'.
 Your code must define a function called 'analyze_data_quality(df)' that returns a dictionary with the analysis results.
+The dictionary MUST include an 'issue_rows' key that contains a list of rows with issues (missing values, outliers, inconsistent formatting, etc.).
+
+IMPORTANT: Each issue row in the 'issue_rows' list must be a dictionary with exactly these three keys:
+- 'index': The row index number
+- 'issues': A string describing what issues were found in this row
+- 'row': The complete row data as a dictionary
+
+For example:
+{
+  'index': 5,
+  'issues': 'Missing values in Name and Age columns',
+  'row': {'Employee_ID': 'E1004', 'Name': None, 'Age': None, ...}
+}
+
+Be very careful with DataFrame indexing and avoid complex slicing operations. Always check if columns exist before accessing them.
+Handle all potential errors with try/except blocks to ensure the code doesn't crash.
+Make sure to convert row data to dictionaries properly using df.iloc[index].to_dict() or similar approaches.
+Do not use df[slice(None), column_index] style indexing as it causes errors in Pyodide.
+
 The code will be executed in a Pyodide environment with pandas, numpy, and scipy already imported.
 Only return valid Python code without any explanations or markdown formatting.`;
 
@@ -342,14 +413,27 @@ Only return valid Python code without any explanations or markdown formatting.`;
     // Display analysis results
     hideLoading();
 
+    // Display rows with issues if available
+    if (analysisResults.issue_rows && analysisResults.issue_rows.length > 0) {
+      issuesCard.classList.remove("d-none");
+      displayIssueRows(analysisResults.issue_rows);
+    }
+
     // Generate summary
     summaryCard.classList.remove("d-none");
     showLoading();
 
+    // Check for repeated values and request suggestions
+    let repeatedValuesPrompt = "";
+    if (analysisResults.duplicates || 
+        (analysisResults.repeated_values && Object.keys(analysisResults.repeated_values).length > 0)) {
+      repeatedValuesPrompt = `\n\nFor any repeated values found in the data, suggest alternative values that would make the data more unique while maintaining semantic meaning.`;
+    }
+
     const summarizationPrompt = `You are an expert data quality analyst. 
 Provide a clear, concise summary of the data quality analysis results in markdown format.
 Highlight the most important findings and provide actionable recommendations to improve data quality.
-Use bullet points, headers, and formatting to make the summary easy to read.`;
+Use bullet points, headers, and formatting to make the summary easy to read.${repeatedValuesPrompt}`;
 
     // Use our existing formatValue function to handle complex types including BigInt
     const serializedResults = JSON.stringify(analysisResults, (key, value) =>
