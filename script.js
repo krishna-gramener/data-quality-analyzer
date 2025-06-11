@@ -426,7 +426,9 @@ Only return valid Python code without any explanations or markdown formatting.`;
     const summarizationPrompt = `You are an expert data quality analyst. 
 Provide a clear, concise summary of the data quality analysis results in markdown format.
 Highlight the most important findings and provide actionable recommendations to improve data quality.
-Use bullet points, headers, and formatting to make the summary easy to read.$\n\nFor any repeated values found in the data, suggest alternative values that would make the data more unique while maintaining semantic meaning.`;
+Use bullet points, headers, and formatting to make the summary easy to read.
+
+For any repeated values found in the data, suggest alternative values that would make the data more unique while maintaining semantic meaning.`;
 
     // Use our existing formatValue function to handle complex types including BigInt
     const serializedResults = JSON.stringify(analysisResults, (key, value) =>
