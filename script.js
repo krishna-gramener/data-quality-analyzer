@@ -29,7 +29,14 @@ const codeContent = document.getElementById("codeContent");
 // Global variables
 let fileData = null;
 let parsedData = null;
-const { token } = await fetch("https://llmfoundry.straive.com/token", { credentials: "include" }).then((r) => r.json());
+let token='';
+
+async function init(){
+  const response = await fetch("https://llmfoundry.straive.com/token", { credentials: "include" }).then((r) => r.json());
+  token=response.token;
+}
+
+init();
 
 // Helper functions for formatting
 function formatCategoryName(name) {
