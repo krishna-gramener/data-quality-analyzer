@@ -2,15 +2,8 @@
 const pyodideWorker = new Worker("./pyworker.js", { type: "module" });
 
 // DOM elements
-const fileInput = document.getElementById("fileInput");
-const dropZone = document.getElementById("dropZone");
-const browseButton = document.getElementById("browseButton");
-const fileInfo = document.getElementById("fileInfo");
-const fileName = document.getElementById("fileName");
-const fileSize = document.getElementById("fileSize");
-const fileType = document.getElementById("fileType");
-const contextText = document.getElementById("contextText");
 const globalLoader = document.getElementById("globalLoader");
+const datasetContainer = document.getElementById("datasetContainer");
 const dataPreview = document.getElementById("dataPreview");
 const previewCard = document.getElementById("previewCard");
 const columnDescCard = document.getElementById("columnDescCard");
@@ -21,131 +14,112 @@ const issuesCard = document.getElementById("issuesCard");
 const analysisResult = document.getElementById("analysisResult");
 const summaryResult = document.getElementById("summaryResult");
 const issuesResult = document.getElementById("issuesResult");
-const resetButton = document.getElementById("resetButton");
 const analyzeButton = document.getElementById("analyzeButton");
 const pythonCode = document.getElementById("pythonCode");
 const codeContent = document.getElementById("codeContent");
+const selectedDatasetSpan = document.getElementById("selectedDataset");
 
 // Global variables
 let fileData = null;
 let parsedData = null;
-let token='';
+let token = '';
+let config = null;
 
-async function init(){
-  const response = await fetch("https://llmfoundry.straive.com/token", { credentials: "include" }).then((r) => r.json());
-  token=response.token;
+async function init() {
+  try {
+    // Load config.json
+    const configResponse = await fetch('config.json');
+    if (!configResponse.ok) throw new Error('Failed to load config.json');
+    config = await configResponse.json();
+
+    // Create dataset cards
+    createDatasetCards();
+
+    // Get API token
+    const response = await fetch("https://llmfoundry.straive.com/token", { credentials: "include" });
+    const data = await response.json();
+    token = data.token;
+  } catch (error) {
+    console.error('Initialization error:', error);
+    alert('Failed to initialize application: ' + error.message);
+  }
+}
+
+// Create dataset cards from config
+function createDatasetCards() {
+  if (!config || !config.datasets) return;
+  
+  const html = config.datasets.map(dataset => `
+    <div class="col-md-6 col-lg-3">
+      <div class="card h-100" data-dataset="${dataset.file}">
+        <div class="card-body d-flex flex-column">
+          <h5 class="card-title">${dataset.title}</h5>
+          <p class="card-text flex-grow-1">${dataset.description}</p>
+          <div class="mt-auto">
+            <button class="btn btn-outline-primary select-dataset">Select Dataset</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+
+  datasetContainer.innerHTML = html;
+
+  // Add event listeners to new buttons
+  document.querySelectorAll('.select-dataset').forEach(button => {
+    button.addEventListener('click', handleDatasetSelect);
+  });
+}
+
+// Handle dataset selection
+async function handleDatasetSelect(e) {
+  const card = e.target.closest('.card');
+  if (!card) return;
+  
+  const datasetName = card.dataset.dataset;
+  selectedDatasetSpan.textContent = datasetName;
+
+  // Reset any previously selected cards
+  document.querySelectorAll('.card').forEach(c => {
+    if (c) {
+      c.classList.remove('border-primary');
+      const btn = c.querySelector('button');
+      if (btn) btn.classList.replace('btn-primary', 'btn-outline-primary');
+    }
+  });
+
+  // Highlight selected card
+  card.classList.add('border-primary');
+  e.target.classList.replace('btn-outline-primary', 'btn-primary');
+
+  try {
+    showLoading();
+    const response = await fetch(`dataset/${datasetName}`, {
+      headers: {
+        'Content-Type': 'text/csv',
+      },
+    });
+    if (!response.ok) throw new Error('Failed to load dataset');
+    
+    const csvData = await response.text();
+    parsedData = parseCSV(csvData);
+
+    // Show first 5 rows in preview
+    displayDataPreview(parsedData.slice(0, 6));
+    previewCard.classList.remove("d-none");
+    getColumnDescriptions(parsedData); 
+    analyzeButton.classList.remove("d-none");
+    hideLoading();
+  } catch (error) {
+    console.error(error);
+    alert(`Error loading dataset: ${error.message}`);
+    hideLoading();
+  }
 }
 
 init();
 
-// Helper functions for formatting
-function formatCategoryName(name) {
-  // Convert snake_case or camelCase to Title Case with spaces
-  return name
-    .replace(/_/g, " ")
-    .replace(/([A-Z])/g, " $1")
-    .replace(/^./, (str) => str.toUpperCase())
-    .trim();
-}
-
-function formatValue(value) {
-  // Handle null, undefined, primitives
-  if (value === null || value === undefined) return "N/A";
-  if (typeof value === "number") return Number.isInteger(value) ? value.toString() : value.toFixed(2);
-  if (typeof value === "bigint") return value.toString() + "n";
-  if (typeof value === "boolean") return value ? "Yes" : "No";
-
-  // Handle arrays
-  if (Array.isArray(value)) {
-    if (value.length === 0) return "Empty array";
-    const formatted = value
-      .slice(0, 5)
-      .map((v) => formatValue(v))
-      .join(", ");
-    return value.length > 5 ? `${formatted}... (${value.length} items)` : formatted;
-  }
-
-  // Handle objects
-  if (typeof value === "object") {
-    try {
-      return JSON.stringify(value, (_, v) => (typeof v === "bigint" ? v.toString() + "n" : v));
-    } catch {
-      return "[Complex Object]";
-    }
-  }
-  return value.toString();
-}
-
-// Event listeners
-browseButton.addEventListener("click", () => fileInput.click());
-fileInput.addEventListener("change", handleFileSelect);
-dropZone.addEventListener("dragover", handleDragOver);
-dropZone.addEventListener("drop", handleFileDrop);
-resetButton.addEventListener("click", resetApp);
 analyzeButton.addEventListener("click", analyzeData);
-
-// File handling functions
-function handleDragOver(e) {
-  e.preventDefault();
-  e.stopPropagation();
-  dropZone.classList.add("border-primary");
-}
-
-function handleFileDrop(e) {
-  e.preventDefault();
-  e.stopPropagation();
-  dropZone.classList.remove("border-primary");
-
-  if (e.dataTransfer.files.length) {
-    fileInput.files = e.dataTransfer.files;
-    handleFileSelect();
-  }
-}
-
-function handleFileSelect() {
-  if (!fileInput.files.length) return;
-
-  const file = fileInput.files[0];
-  const extension = file.name.split(".").pop().toLowerCase();
-
-  if (!["xlsx", "xls", "csv"].includes(extension)) {
-    alert("Please upload an Excel (.xlsx, .xls) or CSV file.");
-    return;
-  }
-
-  // Update UI with file info
-  fileName.textContent = file.name;
-  fileInfo.classList.remove("d-none");
-
-  // Configure reader and read file
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    fileData = e.target.result;
-    try {
-      // Parse data based on file type
-      parsedData = extension === "csv" ? parseCSV(fileData) : parseExcel(fileData);
-
-      // Update UI
-      displayDataPreview(parsedData);
-      resetButton.classList.remove("d-none");
-      analyzeButton.classList.remove("d-none");
-    } catch (error) {
-      console.error(error);
-      alert("Error parsing file: " + error.message);
-    }
-  };
-
-  // Read file using appropriate method
-  reader[extension === "csv" ? "readAsText" : "readAsArrayBuffer"](file);
-}
-
-// Parse Excel file using SheetJS
-function parseExcel(data) {
-  const workbook = XLSX.read(data, { type: "array" });
-  const firstSheetName = workbook.SheetNames[0];
-  const worksheet = workbook.Sheets[firstSheetName];
-  return XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-}
 
 // Parse CSV file
 function parseCSV(data) {
@@ -182,9 +156,6 @@ function displayDataPreview(data) {
 
   dataPreview.innerHTML = tableHTML;
   previewCard.classList.remove("d-none");
-  
-  // Get column descriptions
-  getColumnDescriptions(data);
 }
 
 // Loading functions
@@ -241,86 +212,40 @@ function displayIssueRows(issueRows) {
   issuesResult.innerHTML = tableHTML;
 }
 
-// Get column descriptions from LLM
+// Get column descriptions from config.json
 async function getColumnDescriptions(data) {
   if (!data || !data.length) return;
   
-  // Show the column descriptions card and loading indicator
+  // Show the column descriptions card
   columnDescCard.classList.remove("d-none");
-  showLoading();
   columnDescriptions.innerHTML = "";
   
-  const headers = data[0];
-  const rows = data.slice(1, 6); // Get first 5 rows for preview
+  // Get the dataset name from the selected dataset
+  const selectedDataset = selectedDatasetSpan.textContent;
+  const datasetId = selectedDataset.replace('.csv', '');
   
-  // Format data for LLM
-  let dataPreviewText = "Data Preview:\n" + headers.join(", ") + "\n" + 
-      rows.map((row) => row.join(", ")).join("\n");
-  
-  // Add context if available
-  const context = contextText.value.trim();
-  const userMessage = context ? `Context: ${context}\n\n${dataPreviewText}` : dataPreviewText;
-  
-  // System prompt for generating column descriptions
-  const systemPrompt = `You are an expert data analyst. Based on the provided data preview, 
-  generate a brief description for each column in the dataset.
-  For each column, provide a clear description of what the column represents
-
-  Format :- 
-{
-  "type": "object",
-  "properties": {
-    "columnDescription": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "columnName": {
-            "type": "string"
-          },
-          "description": {
-            "type": "string"
-          }
-        },
-        "required": ["columnName", "description"]
-      }
-    }
-  },
-  "required": ["columnDescription"]
-}
-`;
-  
-  try {
-    // Get descriptions from LLM
-    const response = await callLLM(systemPrompt, userMessage);
-    
-    // Parse the response (expecting JSON)
-    let columnData;
-    try {
-      // Try to parse as JSON
-      columnData = JSON.parse(response);
-    } catch (e) {
-      console.error("Error parsing column descriptions:", e);
-      return;
-    }
-    
-    // Create table for column descriptions
-    let tableHTML = '<table class="table table-striped table-bordered">';
-    tableHTML += '<thead><tr><th>Column Name</th><th>Description</th></tr></thead>';
-    tableHTML += '<tbody>';
-
-    columnData["columnDescription"].forEach((item) => {
-      tableHTML += `<tr><td><strong>${item.columnName}</strong></td><td>${item.description}</td></tr>`;
-    });
-    tableHTML += '</tbody></table>';  
-    // Display the table
-    columnDescriptions.innerHTML = tableHTML;
-  } catch (error) {
-    console.error("Error getting column descriptions:", error);
-    columnDescriptions.innerHTML = `<div class="alert alert-danger">Error getting column descriptions: ${error.message}</div>`;
-  } finally {
-    hideLoading();
+  // Get column descriptions for this dataset
+  const descriptions = config['column-description'][datasetId];
+  if (!descriptions) {
+    columnDescriptions.innerHTML = `<div class="alert alert-warning">No column descriptions found for ${selectedDataset}</div>`;
+    return;
   }
+  
+  // Create table for column descriptions
+  let tableHTML = '<table class="table table-striped table-bordered">';
+  tableHTML += '<thead><tr><th>Column Name</th><th>Description</th></tr></thead>';
+  tableHTML += '<tbody>';
+
+  descriptions.forEach((item) => {
+    const columnName = Object.keys(item)[0];
+    const description = item[columnName];
+    tableHTML += `<tr><td><strong>${columnName}</strong></td><td>${description}</td></tr>`;
+  });
+  
+  tableHTML += '</tbody></table>';
+  
+  // Display the table
+  columnDescriptions.innerHTML = tableHTML;
 }
 
 // Convert array data to object format for easier processing
@@ -337,26 +262,12 @@ function arrayToObjectData(data) {
   });
 }
 
-// Reset the application
-function resetApp() {
-  fileInput.value = "";
-  fileInfo.classList.add("d-none");
-  previewCard.classList.add("d-none");
-  columnDescCard.classList.add("d-none");
-  analysisCard.classList.add("d-none");
-  summaryCard.classList.add("d-none");
-  issuesCard.classList.add("d-none");
-  resetButton.classList.add("d-none");
-  analyzeButton.classList.add("d-none");
-  contextText.value = "";
-  fileData = null;
-  parsedData = null;
-  hideLoading();
-}
-
 // Analyze the data
 async function analyzeData() {
-  if (!parsedData || !parsedData.length) return;
+  if (!parsedData) {
+    alert("Please select a dataset first.");
+    return;
+  }
 
   // Setup UI and prepare data
   analysisCard.classList.remove("d-none");
@@ -367,12 +278,8 @@ async function analyzeData() {
   // Format data preview for LLM
   const headers = parsedData[0];
   const previewRows = parsedData.slice(1, 6);
-  let dataPreviewText =
-    "Data Preview:\n" + headers.join(", ") + "\n" + previewRows.map((row) => row.join(", ")).join("\n");
-
-  // Add context if available
-  const context = contextText.value.trim();
-  const userMessage = context ? `Context: ${context}\n\n${dataPreviewText}` : dataPreviewText;
+  const userMessage = "Data Preview:\n" + headers.join(", ") + "\n" + 
+    previewRows.map((row) => row.join(", ")).join("\n");
 
   // System prompt for generating Python code for data quality analysis
   const systemPrompt = `You are an expert data quality analyst. Generate Python code that analyzes the data quality of the provided dataset.
@@ -461,7 +368,6 @@ async function callLLM(systemPrompt, userMessage) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        // Use custom replacer for BigInt serialization
         model: "gpt-4.1-mini",
         messages: [
           { role: "system", content: systemPrompt },
@@ -494,7 +400,6 @@ ${code}
 
 # Convert input data to pandas DataFrame
 df = pd.DataFrame(data)
-
 # Run the analysis function
 result = analyze_data_quality(df)
 

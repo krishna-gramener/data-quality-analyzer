@@ -1,0 +1,62 @@
+{
+  "datasets": [
+    {
+      "id": "edc_df",
+      "file": "edc_df.csv",
+      "title": "EDC Dataset",
+      "description": "Contains clinical visit records detailing subject dosing information and any reported adverse events."
+    },
+    {
+      "id": "epro_df",
+      "file": "epro_df.csv",
+      "title": "ePRO Dataset",
+      "description": "Captures self-reported symptoms and their severity from subjects over time."
+    },
+    {
+      "id": "ivrs_df",
+      "file": "ivrs_df.csv",
+      "title": "IVRS Dataset",
+      "description": "Records subject randomization details, including assigned drug kits, countries, and dose groups."
+    },
+    {
+      "id": "lab_df",
+      "file": "lab_df.csv",
+      "title": "Lab Dataset",
+      "description": "Patient Lab Test Results Dataset"
+    }
+  ],
+  "column-description": {
+    "edc_df": [
+      { "subject_id": "A unique identifier assigned to each participant in the study." },
+      { "visit_date": "The date on which the subject visited the clinical site or data was recorded." },
+      { "dose_mg": "The amount of drug administered to the subject, measured in milligrams." },
+      { "adverse_event": "Any undesirable experience or medical occurrence reported by the subject during the study." }
+    ],
+    "epro_df": [
+      { "subject_id": "A unique identifier for the subject reporting symptoms (used to match with other datasets)." },
+      { "symptom": "The type or name of the symptom reported by the subject (e.g., headache, nausea)." },
+      {
+        "severity": "The intensity level of the reported symptom, often on a predefined scale (e.g., mild, moderate, severe)."
+      },
+      { "report_date": "The date when the symptom was reported by the subject." }
+    ],
+    "ivrs_df": [
+      {
+        "subject_id": "A unique identifier assigned to each participant in the trial (used to match with other datasets)."
+      },
+      { "randomization_date": "The date on which the subject was randomly assigned to a treatment group." },
+      { "drug_kit": "Identifier for the specific drug kit assigned to the subject." },
+      { "country": "The country in which the subject is participating in the clinical trial." },
+      {
+        "dose_group": "The predefined dosing group or treatment arm to which the subject was assigned (e.g., low dose, high dose)."
+      }
+    ],
+    "lab_df": [
+      { "subject_id": "Unique identifier for each patient or subject." },
+      { "test_name": "Name of the lab test performed (e.g., WBC, Hemoglobin)." },
+      { "value": "Result of the lab test (numeric value)." },
+      { "unit": "Measurement unit for the lab test result (e.g., mg/L, g/dL)." },
+      { "lab_date": "Date when the lab test was conducted." }
+    ]
+  }
+}

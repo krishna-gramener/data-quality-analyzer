@@ -1,0 +1,11 @@
+subject_id,symptom,severity,report_date
+S8042,fatigue,1.0,2025-03-20
+S9141,Tiredness,,2025-04-03
+S7237,fatigue,3.0,2025-03-05
+S2408,Fatigue,1.0,2025-01-09
+S9088,Tiredness,1.0,2030-01-01
+S9752,fatigue,1.0,2025-03-23
+S1655,Fatigue,3.0,2025-01-30
+S1184,fatigue,2.0,2025-01-11
+S6316,Tiredness,2.0,2025-05-02
+S3858,fatigue,,2030-01-01
