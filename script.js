@@ -8,6 +8,8 @@ const dataPreview = document.getElementById("dataPreview");
 const previewCard = document.getElementById("previewCard");
 const columnDescCard = document.getElementById("columnDescCard");
 const columnDescriptions = document.getElementById("columnDescriptions");
+const sdtmMappingCard = document.getElementById("sdtmMappingCard");
+const sdtmMapping = document.getElementById("sdtmMapping");
 const analysisCard = document.getElementById("analysisCard");
 const summaryCard = document.getElementById("summaryCard");
 const issuesCard = document.getElementById("issuesCard");
@@ -107,7 +109,9 @@ async function handleDatasetSelect(e) {
     // Show first 5 rows in preview
     displayDataPreview(parsedData.slice(0, 6));
     previewCard.classList.remove("d-none");
-    getColumnDescriptions(parsedData); 
+    getColumnDescriptions(parsedData);
+    // Get SDTM mapping for the columns
+    await getSDTMMapping(parsedData[0]);
     analyzeButton.classList.remove("d-none");
     hideLoading();
   } catch (error) {
@@ -210,6 +214,41 @@ function displayIssueRows(issueRows) {
 
   // Add table to DOM
   issuesResult.innerHTML = tableHTML;
+}
+
+// Get SDTM mapping for columns
+async function getSDTMMapping(headers) {
+  if (!headers || !headers.length) return;
+
+  // Show the SDTM mapping card and loading indicator
+  sdtmMappingCard.classList.remove("d-none");
+  showLoading();
+  sdtmMapping.innerHTML = "";
+
+  // System prompt for SDTM mapping
+  const systemPrompt = `You are a CDISC SDTM expert tasked with mapping raw clinical data to SDTM domains and variables.
+
+Using the following table samples:
+- Map each column to SDTM domains like DM, AE, EX, VS, LB.
+- Provide SDTM variable names.
+- Suggest appropriate controlled terminology.
+- Cite SDTM IG references if possible.
+
+Format your response in markdown table format with these columns:
+| Raw Variable | SDTM Domain | SDTM Variable | Controlled Terminology | SDTM IG Reference |`;
+
+  try {
+    // Get mapping from LLM
+    const response = await callLLM(systemPrompt, headers.join(", "));
+    
+    // Display the table using marked for markdown parsing
+    sdtmMapping.innerHTML = marked.parse(response);
+  } catch (error) {
+    console.error("Error getting SDTM mapping:", error);
+    sdtmMapping.innerHTML = `<div class="alert alert-danger">Error getting SDTM mapping: ${error.message}</div>`;
+  } finally {
+    hideLoading();
+  }
 }
 
 // Get column descriptions from config.json
