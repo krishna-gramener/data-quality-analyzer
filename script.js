@@ -441,7 +441,6 @@ ${code}
 
 # Convert input data to pandas DataFrame
 df = pd.DataFrame(data)
-print(data)
 # Run the analysis function
 result = analyze_data_quality(df)
 
