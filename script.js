@@ -96,15 +96,11 @@ async function handleDatasetSelect(e) {
 
   try {
     showLoading();
-    const response = await fetch(`dataset/${datasetName}`, {
-      headers: {
-        'Content-Type': 'text/csv',
-      },
-    });
+    const response = await fetch(`dataset/${datasetName}`);
     if (!response.ok) throw new Error('Failed to load dataset');
     
-    const csvData = await response.text();
-    parsedData = parseCSV(csvData);
+    const csvData = await response.arrayBuffer();
+    parsedData = parseFile(csvData);
 
     // Show first 5 rows in preview
     displayDataPreview(parsedData.slice(0, 6));
@@ -125,10 +121,16 @@ init();
 
 analyzeButton.addEventListener("click", analyzeData);
 
-// Parse CSV file
-function parseCSV(data) {
-  const lines = data.split("\n");
-  return lines.map((line) => line.split(",").map((cell) => cell.trim()));
+// Parse CSV file using XLSX
+function parseFile(data) {
+  try {
+    const workbook = XLSX.read(data, { type: 'binary' });
+    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+    return XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: '' });
+  } catch (error) {
+    console.error('Error parsing CSV:', error);
+    throw new Error('Failed to parse CSV file: ' + error.message);
+  }
 }
 
 // Display data preview (first 5 rows)
@@ -439,6 +441,7 @@ ${code}
 
 # Convert input data to pandas DataFrame
 df = pd.DataFrame(data)
+print(data)
 # Run the analysis function
 result = analyze_data_quality(df)
 

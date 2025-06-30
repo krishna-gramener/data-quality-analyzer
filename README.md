@@ -22,6 +22,7 @@ A web application for analyzing data quality in clinical trial datasets using LL
 ## Technical Details
 
 - Built with HTML, CSS, JavaScript, and Bootstrap 5
+- Uses XLSX library for robust CSV parsing and data extraction
 - Uses Pyodide for running Python code in the browser
 - Integrates with LLM API for:
   - CDISC SDTM mapping suggestions
@@ -38,9 +39,6 @@ A web application for analyzing data quality in clinical trial datasets using LL
 2. Place your CSV files in the `dataset` folder
 3. Set your API token in `script.js`:
 
-```javascript
-let token = "your_token_here"; // Replace with your actual token
-```
 
 ## Dependencies
 
