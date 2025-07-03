@@ -2,8 +2,15 @@
 const pyodideWorker = new Worker("./pyworker.js", { type: "module" });
 
 // DOM elements
-const globalLoader = document.getElementById("globalLoader");
+const introSection = document.getElementById("introSection");
+const mainContent = document.getElementById("mainContent");
+const proceedButton = document.getElementById("proceedButton");
 const datasetContainer = document.getElementById("datasetContainer");
+const analysisControls = document.getElementById("analysisControls");
+const analysisLoader = document.getElementById("analysisLoader");
+const analysisProgressContainer = document.getElementById("analysisProgressContainer");
+const analysisProgress = document.getElementById("analysisProgress");
+const analysisStatus = document.getElementById("analysisStatus");
 const dataPreview = document.getElementById("dataPreview");
 const previewCard = document.getElementById("previewCard");
 const columnDescCard = document.getElementById("columnDescCard");
@@ -95,7 +102,8 @@ async function handleDatasetSelect(e) {
   e.target.classList.replace('btn-outline-primary', 'btn-primary');
 
   try {
-    showLoading();
+    showAnalysisProgress();
+    updateAnalysisProgress(0, "Loading dataset...");
     const response = await fetch(`dataset/${datasetName}`);
     if (!response.ok) throw new Error('Failed to load dataset');
     
@@ -103,21 +111,30 @@ async function handleDatasetSelect(e) {
     parsedData = parseFile(csvData);
 
     // Show first 5 rows in preview
+    updateAnalysisProgress(50, "Preparing data preview...");
     displayDataPreview(parsedData.slice(0, 6));
     previewCard.classList.remove("d-none");
     getColumnDescriptions(parsedData);
-    // Get SDTM mapping for the columns
+    analysisControls.classList.remove("d-none");
+    
+    // Complete the loading
+    updateAnalysisProgress(100, "Dataset loaded!");
     await getSDTMMapping(parsedData[0]);
-    analyzeButton.classList.remove("d-none");
-    hideLoading();
+    setTimeout(() => hideAnalysisProgress(), 1000);
   } catch (error) {
     console.error(error);
     alert(`Error loading dataset: ${error.message}`);
-    hideLoading();
+    hideAnalysisProgress();
   }
 }
 
 init();
+
+// Add event listener for proceed button
+proceedButton.addEventListener("click", () => {
+  introSection.classList.add("d-none");
+  mainContent.classList.remove("d-none");
+});
 
 analyzeButton.addEventListener("click", analyzeData);
 
@@ -164,13 +181,28 @@ function displayDataPreview(data) {
   previewCard.classList.remove("d-none");
 }
 
-// Loading functions
-function showLoading() {
-  globalLoader.classList.remove("d-none");
+// Analysis progress functions
+function updateAnalysisProgress(percent, status) {
+  analysisProgress.style.width = `${percent}%`;
+  if (status) {
+    analysisStatus.textContent = status;
+  }
 }
 
-function hideLoading() {
-  globalLoader.classList.add("d-none");
+function showAnalysisProgress() {
+  analysisLoader.classList.remove("d-none");
+  analysisProgressContainer.classList.remove("d-none");
+  analysisStatus.classList.remove("d-none");
+  analyzeButton.disabled = true;
+  analysisProgress.style.width = "0%";
+}
+
+function hideAnalysisProgress() {
+  analysisLoader.classList.add("d-none");
+  analysisProgressContainer.classList.add("d-none");
+  analysisStatus.classList.add("d-none");
+  analyzeButton.disabled = false;
+  analysisProgress.style.width = "0%";
 }
 
 // Display rows with issues
@@ -195,7 +227,7 @@ function displayIssueRows(issueRows) {
   // Table body
   tableHTML += "<tbody>";
   issueRows.forEach((issueRow) => {
-    tableHTML += "<tr class='table-warning'>"; // Highlight issue rows
+    tableHTML += "<tr>"; // Highlight issue rows
     
     // Add row index cell
     tableHTML += `<td>${issueRow.index !== undefined ? issueRow.index : "N/A"}</td>`;
@@ -222,10 +254,11 @@ function displayIssueRows(issueRows) {
 async function getSDTMMapping(headers) {
   if (!headers || !headers.length) return;
 
-  // Show the SDTM mapping card and loading indicator
+  // Show the SDTM mapping card
   sdtmMappingCard.classList.remove("d-none");
-  showLoading();
   sdtmMapping.innerHTML = "";
+  showAnalysisProgress();
+  updateAnalysisProgress(25, "Generating SDTM mappings...");
 
   // System prompt for SDTM mapping
   const systemPrompt = `You are a CDISC SDTM expert tasked with mapping raw clinical data to SDTM domains and variables.
@@ -245,11 +278,12 @@ Format your response in markdown table format with these columns:
     
     // Display the table using marked for markdown parsing
     sdtmMapping.innerHTML = marked.parse(response);
+    updateAnalysisProgress(100, "SDTM mapping complete!");
+    setTimeout(() => hideAnalysisProgress(), 1000);
   } catch (error) {
     console.error("Error getting SDTM mapping:", error);
     sdtmMapping.innerHTML = `<div class="alert alert-danger">Error getting SDTM mapping: ${error.message}</div>`;
-  } finally {
-    hideLoading();
+    hideAnalysisProgress();
   }
 }
 
@@ -312,7 +346,8 @@ async function analyzeData() {
 
   // Setup UI and prepare data
   analysisCard.classList.remove("d-none");
-  showLoading();
+  showAnalysisProgress();
+  updateAnalysisProgress(0, "Analyzing data...");
   analysisResult.innerHTML = "";
   const objectData = arrayToObjectData(parsedData);
 
@@ -360,15 +395,18 @@ Only return valid Python code without any explanations or markdown formatting.`;
 
   try {
     // Generate and execute Python code
+    updateAnalysisProgress(25, "Generating analysis code...");
     const code = await callLLM(systemPrompt, userMessage);
-    codeContent.textContent = code;
     pythonCode.classList.remove("d-none");
+    codeContent.textContent = code;
+
+    // Execute Python code
+    updateAnalysisProgress(50, "Executing analysis code...");
     const analysisResults = await executePythonCode(code, objectData);
 
     // Display analysis results
-    hideLoading();
+    updateAnalysisProgress(75, "Processing results...");
 
-    // Display rows with issues if available
     if (analysisResults.issue_rows && analysisResults.issue_rows.length > 0) {
       issuesCard.classList.remove("d-none");
       displayIssueRows(analysisResults.issue_rows);
@@ -376,7 +414,7 @@ Only return valid Python code without any explanations or markdown formatting.`;
 
     // Generate summary
     summaryCard.classList.remove("d-none");
-    showLoading();
+    updateAnalysisProgress(90, "Generating summary...");
 
     const summarizationPrompt = `You are an expert data quality analyst. 
 Provide a clear, concise summary of the data quality analysis results in markdown format.
@@ -390,12 +428,13 @@ For any repeated values found in the data, suggest alternative values that would
       typeof value === "bigint" ? value.toString() + "n" : value
     );
     const summary = await callLLM(summarizationPrompt, serializedResults);
-    hideLoading();
     summaryResult.innerHTML = marked.parse(summary);
+    updateAnalysisProgress(100, "Analysis complete!");
+    setTimeout(() => hideAnalysisProgress(), 1500); // Keep success state visible briefly
   } catch (error) {
     console.error(error);
-    hideLoading();
     analysisResult.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+    hideAnalysisProgress();
   }
 }
 
