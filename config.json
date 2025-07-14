@@ -23,6 +23,12 @@
       "file": "lab_df.csv",
       "title": "Lab Dataset",
       "description": "Patient Lab Test Results Dataset"
+    },
+    {
+      "id": "entity_df",
+      "file": "entity_df.csv",
+      "title": "Entity Dataset",
+      "description": "This dataset contains legal, organizational, and regulatory details of various registered entities, including incorporation authority, financial classification flags, business status, and size-related attributes."
     }
   ],
   "column-description": {
@@ -57,6 +63,40 @@
       { "value": "Result of the lab test (numeric value)." },
       { "unit": "Measurement unit for the lab test result (e.g., mg/L, g/dL)." },
       { "lab_date": "Date when the lab test was conducted." }
-    ]
+    ],
+    "entity_df": 
+      [
+        { "LEGALSTRUCTUREID": "Unique identifier for the legal structure of the entity." },
+        { "ENTITYTYPEID": "Numerical code indicating the type of entity." },
+        { "ENTITYSUBTYPEID": "Code representing the subtype of the entity." },
+        { "ISBRANCHFLAG": "Flag indicating if the entity is a branch (Y/N)." },
+        { "USGSEFLAG": "Flag showing if the entity is a U.S. Government-Sponsored Enterprise (Y/N)." },
+        { "INCORPORATIONAUTHORITYNAME": "Name of the authority under which the entity is incorporated." },
+        { "G-SIBFLAG": "Flag indicating if the entity is a Global Systemically Important Bank (Y/N)." },
+        { "G-SIBNAME": "Name of the G-SIB if applicable." },
+        { "SUPRANATIONALENTITYFLAG": "Flag denoting if the entity is supranational (Y/N)." },
+        { "MULTILATERALDEVELOPMENTBANKFLAG": "Indicates if the entity is a multilateral development bank (Y/N)." },
+        { "SOVEREIGNWEALTHFUNDFLAG": "Flag indicating if it's a sovereign wealth fund (Y/N)." },
+        { "COMMUNITYDEVELOPMENTFINANCIALINSTITUTIONFLAG": "Flag for community development financial institution status (Y/N)." },
+        { "INDUSTRIALLOANBANKFLAG": "Indicates if the entity is an industrial loan bank (Y/N)." },
+        { "SWAPDEALERFLAG": "Flag showing if the entity is a swap dealer (Y/N)." },
+        { "BALANCESHEETCONSOLIDATIONFLAG": "Flag for whether balance sheet is consolidated (Y/N)." },
+        { "ANACREDITINSTITUTIONALSECTORID": "Code for the AnaCredit institutional sector." },
+        { "ANACREDITLEGALFORMID": "Code representing AnaCredit legal form." },
+        { "ANACREDITINSTITUTIONALSUBSECTORCODE": "Subsector code under AnaCredit classification." },
+        { "STATUSOFLEGALPROCEEDINGSID": "Status code for ongoing or past legal proceedings." },
+        { "DATEOFINITIATIONOFLEGALPROCEEDINGS": "Date when legal proceedings were initiated." },
+        { "ENTERPRISESIZE": "Size category of the enterprise (e.g., small, medium, large)." },
+        { "DATEOFENTERPRISESIZE": "Date when the enterprise size was recorded or determined." },
+        { "NUMBEROFEMPLOYEES": "Total number of employees in the entity." },
+        { "BALANCESHEETTOTAL": "Total value of the entity’s balance sheet." },
+        { "ANNUALTURNOVER": "Total annual turnover or revenue of the entity." },
+        { "BUSINESSSTATUS": "Current business status of the entity (e.g., ACTIVE, INACTIVE)." },
+        { "BUSINESSSTATUSREASONCODE": "Code explaining the reason for business status (e.g., DISSOLVED)." },
+        { "SPVDEBTISSUINGFLAG": "Flag for whether the entity is a Special Purpose Vehicle for debt issuance (Y/N)." },
+        { "FMUFLAG": "Flag indicating if it's a Financial Market Utility (Y/N)." },
+        { "FMIFLAG": "Flag showing Financial Market Infrastructure status (Y/N)." },
+        { "FORMPFFLAG": "Flag denoting FORM PF filing status (Y/N)." }
+      ]
   }
 }

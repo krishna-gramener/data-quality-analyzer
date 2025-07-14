@@ -15,8 +15,6 @@ const dataPreview = document.getElementById("dataPreview");
 const previewCard = document.getElementById("previewCard");
 const columnDescCard = document.getElementById("columnDescCard");
 const columnDescriptions = document.getElementById("columnDescriptions");
-const sdtmMappingCard = document.getElementById("sdtmMappingCard");
-const sdtmMapping = document.getElementById("sdtmMapping");
 const analysisCard = document.getElementById("analysisCard");
 const summaryCard = document.getElementById("summaryCard");
 const issuesCard = document.getElementById("issuesCard");
@@ -119,7 +117,6 @@ async function handleDatasetSelect(e) {
     
     // Complete the loading
     updateAnalysisProgress(100, "Dataset loaded!");
-    await getSDTMMapping(parsedData[0]);
     setTimeout(() => hideAnalysisProgress(), 1000);
   } catch (error) {
     console.error(error);
@@ -359,41 +356,6 @@ function displayIssueRows(issueRows) {
   issuesResult.innerHTML = tableHTML;
 }
 
-// Get SDTM mapping for columns
-async function getSDTMMapping(headers) {
-  if (!headers || !headers.length) return;
-
-  // Show the SDTM mapping card
-  sdtmMappingCard.classList.remove("d-none");
-  sdtmMapping.innerHTML = "";
-  showAnalysisProgress();
-  updateAnalysisProgress(25, "Generating SDTM mappings...");
-
-  // System prompt for SDTM mapping
-  const systemPrompt = `You are a CDISC SDTM expert tasked with mapping raw clinical data to SDTM domains and variables.
-
-Using the following table samples:
-- Map each column to SDTM domains like DM, AE, EX, VS, LB.
-- Provide SDTM variable names.
-- Suggest appropriate controlled terminology.
-- Cite SDTM IG references if possible.
-
-Format your response in markdown table format with these columns:
-| Raw Variable | SDTM Domain | SDTM Variable | Controlled Terminology | SDTM IG Reference |`;
-
-  try {
-    // Get mapping from LLM
-    const response = await callLLM(systemPrompt, headers.join(", "));
-    // Display the table using marked for markdown parsing
-    sdtmMapping.innerHTML = marked.parse(response);
-    updateAnalysisProgress(100, "SDTM mapping complete!");
-    setTimeout(() => hideAnalysisProgress(), 1000);
-  } catch (error) {
-    console.error("Error getting SDTM mapping:", error);
-    sdtmMapping.innerHTML = `<div class="alert alert-danger">Error getting SDTM mapping: ${error.message}</div>`;
-    hideAnalysisProgress();
-  }
-}
 
 // Get column descriptions from config.json
 async function getColumnDescriptions(data) {
@@ -467,9 +429,10 @@ async function analyzeData() {
 
   // System prompt for generating Python code for data quality analysis
   const systemPrompt = `You are an expert data quality analyst. Generate Python code that analyzes the data quality of the provided dataset.
-The code should:
+
+Your code should:
 1. Check for missing values
-2. Identify outliers
+2. Identify outliers in numeric columns using z-score method
 3. Analyze data distributions
 4. Check for duplicates
 5. Validate data types
@@ -493,12 +456,20 @@ For example:
   'row': {'Employee_ID': 'E1004', 'Name': None, 'Age': None, ...}
 }
 
+IMPORTANT FOR OUTLIER DETECTION:
+- Process each numeric column individually
+- Do NOT use stats.zscore() as it may cause issues in Pyodide
+- Instead, calculate z-scores manually: z = (x - mean) / std
+- Handle each column separately to avoid slice operations
+- Always check for zero standard deviation before calculations
+
 Be very careful with DataFrame indexing and avoid complex slicing operations. Always check if columns exist before accessing them.
 Handle all potential errors with try/except blocks to ensure the code doesn't crash.
 Make sure to convert row data to dictionaries properly using df.iloc[index].to_dict() or similar approaches.
 Do not use df[slice(None), column_index] style indexing as it causes errors in Pyodide.
 
 The code will be executed in a Pyodide environment with pandas, numpy, and scipy already imported.
+Be careful with numpy/pandas operations that might not be fully supported in Pyodide.
 Only return valid Python code without any explanations or markdown formatting.`;
 
   try {
