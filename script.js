@@ -197,6 +197,90 @@ function showAnalysisProgress() {
   analysisProgress.style.width = "0%";
 }
 
+// Display results in a table format
+function displayResultsTable(issuesData, totalRows) {
+  const resultsTableCard = document.getElementById('resultsTableCard');
+  const resultsTable = document.getElementById('resultsTable');
+
+  const tableHTML = `
+    <table class="table table-striped table-bordered">
+      <thead>
+        <tr>
+          <th>Row Index</th>
+          <th>Status</th>
+          <th>Issue</th>
+          <th>Suggestion</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${generateTableRows(issuesData, totalRows)}
+      </tbody>
+    </table>
+  `;
+
+  resultsTable.innerHTML = tableHTML;
+  resultsTableCard.classList.remove('d-none');
+}
+
+// Generate table rows for results
+function generateTableRows(issuesData, totalRows) {
+  let rows = '';
+  const issueMap = new Map(issuesData.issues.map(issue => [issue.issueRowIndex, issue]));
+
+  for (let i = 0; i < totalRows; i++) {
+    const issue = issueMap.get(i);
+    if (issue) {
+      rows += `
+        <tr>
+          <td>${i}</td>
+          <td><span class="badge bg-danger">Issue</span></td>
+          <td>${issue.issue}</td>
+          <td>${issue.suggestion}</td>
+        </tr>`;
+    } else {
+      rows += `
+        <tr>
+          <td>${i}</td>
+          <td><span class="badge bg-success">No Issues</span></td>
+          <td></td>
+          <td></td>
+        </tr>`;
+    }
+  }
+  return rows;
+}
+
+// Get formatted issues data from LLM
+async function getFinalTableData(issueRows) {
+  const issuesPrompt = `You are a data quality analyst. Based on the analysis results, return a JSON object with the following schema:
+{
+  "issues": [
+    {
+      "issueRowIndex": integer,
+      "issue": string,
+      "suggestion": string
+    }
+  ]
+}
+
+Each issue should have:
+- issueRowIndex: The row number where the issue was found
+- issue: A clear description of the issue
+- suggestion: A specific suggestion to fix the issue. Suggest with values relevant for current context.
+
+Make sure the response is valid JSON and follows the exact schema.`;
+
+  try {
+    const formattedIssues = await callLLM(issuesPrompt, JSON.stringify(issueRows));
+    const issuesData = JSON.parse(formattedIssues);
+    console.log('Formatted issues:', issuesData);
+    return issuesData;
+  } catch (error) {
+    console.error('Error formatting issues:', error);
+    throw new Error('Failed to format issues: ' + error.message);
+  }
+}
+
 function hideAnalysisProgress() {
   analysisLoader.classList.add("d-none");
   analysisProgressContainer.classList.add("d-none");
@@ -275,7 +359,6 @@ Format your response in markdown table format with these columns:
   try {
     // Get mapping from LLM
     const response = await callLLM(systemPrompt, headers.join(", "));
-    
     // Display the table using marked for markdown parsing
     sdtmMapping.innerHTML = marked.parse(response);
     updateAnalysisProgress(100, "SDTM mapping complete!");
@@ -355,7 +438,7 @@ async function analyzeData() {
   const headers = parsedData[0];
   const previewRows = parsedData.slice(1, 6);
   const userMessage = "Data Preview:\n" + headers.join(", ") + "\n" + 
-    previewRows.map((row) => row.join(", ")).join("\n");
+  previewRows.map((row) => row.join(", ")).join("\n");
 
   // System prompt for generating Python code for data quality analysis
   const systemPrompt = `You are an expert data quality analyst. Generate Python code that analyzes the data quality of the provided dataset.
@@ -406,6 +489,11 @@ Only return valid Python code without any explanations or markdown formatting.`;
 
     // Display analysis results
     updateAnalysisProgress(75, "Processing results...");
+
+    // Get and display formatted issues
+    updateAnalysisProgress(83, "Generating Final Table...");
+    const issuesData = await getFinalTableData(analysisResults);
+    displayResultsTable(issuesData, parsedData.length - 1); // -1 to exclude header row
 
     if (analysisResults.issue_rows && analysisResults.issue_rows.length > 0) {
       issuesCard.classList.remove("d-none");
