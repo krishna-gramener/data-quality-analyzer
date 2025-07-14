@@ -250,6 +250,29 @@ function generateTableRows(issuesData, totalRows) {
   return rows;
 }
 
+// Convert BigInt values to numbers in an object
+function convertBigIntToNumber(obj) {
+  if (typeof obj !== 'object' || obj === null) {
+    return obj;
+  }
+  
+  if (Array.isArray(obj)) {
+    return obj.map(convertBigIntToNumber);
+  }
+  
+  const result = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (typeof value === 'bigint') {
+      result[key] = Number(value);
+    } else if (typeof value === 'object') {
+      result[key] = convertBigIntToNumber(value);
+    } else {
+      result[key] = value;
+    }
+  }
+  return result;
+}
+
 // Get formatted issues data from LLM
 async function getFinalTableData(issueRows) {
   const issuesPrompt = `You are a data quality analyst. Based on the analysis results, return a JSON object with the following schema:
@@ -271,7 +294,9 @@ Each issue should have:
 Make sure the response is valid JSON and follows the exact schema.`;
 
   try {
-    const formattedIssues = await callLLM(issuesPrompt, JSON.stringify(issueRows));
+    // Convert BigInt values to numbers before stringifying
+    const convertedData = convertBigIntToNumber(issueRows);
+    const formattedIssues = await callLLM(issuesPrompt, JSON.stringify(convertedData));
     const issuesData = JSON.parse(formattedIssues);
     console.log('Formatted issues:', issuesData);
     return issuesData;
