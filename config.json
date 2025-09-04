@@ -23,6 +23,12 @@
       "file": "lab_df.csv",
       "title": "Lab Dataset",
       "description": "Patient Lab Test Results Dataset"
+    },
+    {
+      "id": "shipments_df",
+      "file": "shipments_df.csv",
+      "title": "Shipments Dataset",
+      "description": "This dataset contains shipment records capturing logistics details such as IDs, dates, lanes, vendors, transport modes, delivery performance, costs, invoices, and contracts."
     }
   ],
   "column-description": {
@@ -57,6 +63,20 @@
       { "value": "Result of the lab test (numeric value)." },
       { "unit": "Measurement unit for the lab test result (e.g., mg/L, g/dL)." },
       { "lab_date": "Date when the lab test was conducted." }
+    ],
+    "shipments_df": [
+      { "shipment_id": "Unique identifier for each shipment." },
+      { "ship_date": "Date when the shipment was dispatched." },
+      { "lane": "The route or shipping lane through which the shipment was transported." },
+      { "vendor": "The logistics vendor or carrier responsible for the shipment." },
+      { "mode": "The mode of transportation used for the shipment (e.g., Air, Sea, Road)." },
+      { "promised_date": "The promised delivery date for the shipment." },
+      { "actual_date": "The actual delivery date for the shipment." },
+      { "temp_excursion_c": "Temperature excursion during shipment (in degrees Celsius)." },
+      { "otif_flag": "Indicates if the shipment exceeded temperature limits (OTIF = Out of Temperature Interval)." },
+      { "cost_usd": "The cost of the shipment in US dollars." },
+      { "invoice_id": "Unique identifier for the invoice associated with the shipment." },
+      { "contract_id": "Unique identifier for the contract under which the shipment was made." }
     ]
   }
 }
