@@ -499,7 +499,7 @@ Make sure to convert row data to dictionaries properly using df.iloc[index].to_d
 Do not use df[slice(None), column_index] style indexing as it causes errors in Pyodide.
 
 The code will be executed in a Pyodide environment with pandas, numpy, and scipy already imported.
-Only return valid Python code without any explanations or markdown formatting.`;
+Only return valid Python code without any explanations or markdown formatting.  `;
 
   try {
     // Generate and execute Python code
