@@ -483,7 +483,7 @@ The dictionary MUST include an 'issue_rows' key that contains a list of rows wit
 
 IMPORTANT: Each issue row in the 'issue_rows' list must be a dictionary with exactly these three keys:
 - 'index': The row index number
-- 'issues': A string describing what issues were found in this row
+- 'issues': A string describing what all issues were found in this row
 - 'row': The complete row data as a dictionary
 
 For example:
