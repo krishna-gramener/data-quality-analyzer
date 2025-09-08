@@ -479,7 +479,7 @@ The code should:
 
 The data will be provided as a pandas DataFrame named 'df'.
 Your code must define a function called 'analyze_data_quality(df)' that returns a dictionary with the analysis results.
-The dictionary MUST include an 'issue_rows' key that contains a list of rows with issues (missing values, outliers, inconsistent formatting, etc.).
+The dictionary MUST include an 'issue_rows' key that contains a list of rows with all the issues found in the row (missing values, outliers, inconsistent formatting, etc.).
 
 IMPORTANT: Each issue row in the 'issue_rows' list must be a dictionary with exactly these three keys:
 - 'index': The row index number
