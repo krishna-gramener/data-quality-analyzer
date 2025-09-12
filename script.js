@@ -119,7 +119,7 @@ async function handleDatasetSelect(e) {
     
     // Complete the loading
     updateAnalysisProgress(100, "Dataset loaded!");
-    // await getSDTMMapping(parsedData[0]);
+    await getSDTMMapping(parsedData[0]);
     setTimeout(() => hideAnalysisProgress(), 1000);
   } catch (error) {
     console.error(error);
@@ -360,40 +360,40 @@ function displayIssueRows(issueRows) {
 }
 
 // Get SDTM mapping for columns
-// async function getSDTMMapping(headers) {
-//   if (!headers || !headers.length) return;
+async function getSDTMMapping(headers) {
+  if (!headers || !headers.length) return;
 
-//   // Show the SDTM mapping card
-//   sdtmMappingCard.classList.remove("d-none");
-//   sdtmMapping.innerHTML = "";
-//   showAnalysisProgress();
-//   updateAnalysisProgress(25, "Generating SDTM mappings...");
+  // Show the SDTM mapping card
+  sdtmMappingCard.classList.remove("d-none");
+  sdtmMapping.innerHTML = "";
+  showAnalysisProgress();
+  updateAnalysisProgress(25, "Generating SDTM mappings...");
 
-//   // System prompt for SDTM mapping
-//   const systemPrompt = `You are a CDISC SDTM expert tasked with mapping raw clinical data to SDTM domains and variables.
+  // System prompt for SDTM mapping
+  const systemPrompt = `You are a CDISC SDTM expert tasked with mapping raw clinical data to SDTM domains and variables.
 
-// Using the following table samples:
-// - Map each column to SDTM domains like DM, AE, EX, VS, LB.
-// - Provide SDTM variable names.
-// - Suggest appropriate controlled terminology.
-// - Cite SDTM IG references if possible.
+Using the following table samples:
+- Map each column to SDTM domains like DM, AE, EX, VS, LB.
+- Provide SDTM variable names.
+- Suggest appropriate controlled terminology.
+- Cite SDTM IG references if possible.
 
-// Format your response in markdown table format with these columns:
-// | Raw Variable | SDTM Domain | SDTM Variable | Controlled Terminology | SDTM IG Reference |`;
+Format your response in markdown table format with these columns:
+| Raw Variable | SDTM Domain | SDTM Variable | Controlled Terminology | SDTM IG Reference |`;
 
-//   try {
-//     // Get mapping from LLM
-//     const response = await callLLM(systemPrompt, headers.join(", "));
-//     // Display the table using marked for markdown parsing
-//     sdtmMapping.innerHTML = marked.parse(response);
-//     updateAnalysisProgress(100, "SDTM mapping complete!");
-//     setTimeout(() => hideAnalysisProgress(), 1000);
-//   } catch (error) {
-//     console.error("Error getting SDTM mapping:", error);
-//     sdtmMapping.innerHTML = `<div class="alert alert-danger">Error getting SDTM mapping: ${error.message}</div>`;
-//     hideAnalysisProgress();
-//   }
-// }
+  try {
+    // Get mapping from LLM
+    const response = await callLLM(systemPrompt, headers.join(", "));
+    // Display the table using marked for markdown parsing
+    sdtmMapping.innerHTML = marked.parse(response);
+    updateAnalysisProgress(100, "SDTM mapping complete!");
+    setTimeout(() => hideAnalysisProgress(), 1000);
+  } catch (error) {
+    console.error("Error getting SDTM mapping:", error);
+    sdtmMapping.innerHTML = `<div class="alert alert-danger">Error getting SDTM mapping: ${error.message}</div>`;
+    hideAnalysisProgress();
+  }
+}
 
 // Get column descriptions from config.json
 async function getColumnDescriptions(data) {
