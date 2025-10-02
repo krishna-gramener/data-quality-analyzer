@@ -8,24 +8,26 @@
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
     <!-- Bootstrap already provides most styling needs -->
-  </head>
-  <style>
-    .narrative {
-      max-width: 50rem;
-    }
-    .btn-link.collapsed .collapse-icon::after {
-      content: '▶';
-      display: inline-block;
-      margin-right: 0.5rem;
-      font-size: 0.75rem;
-    }
-    .btn-link:not(.collapsed) .collapse-icon::after {
-      content: '▼';
-      display: inline-block;
-      margin-right: 0.5rem;
-      font-size: 0.75rem;
-    }
-  </style>
+    <style>
+      .narrative {
+        max-width: 80rem;
+      }
+      .nav-tabs .nav-link {
+        color: #6c757d;
+      }
+      .nav-tabs .nav-link.active {
+        color: #0d6efd;
+        font-weight: 500;
+      }
+      .tab-pane {
+        padding: 1.5rem 0;
+      }
+      .tab-disabled {
+        pointer-events: none;
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+    </style>
   <body>
 
     <div class="container mt-4">
@@ -33,7 +35,7 @@
         <h1 class="mb-4">Data Quality Analyzer</h1>
       </div>
       <!-- Introduction Section -->
-      <div id="introSection" class="narrative mx-auto text-center my-5">
+      <div id="introSection" class="mx-auto text-center my-5" style="width:50rem">
         <div class="card">
           <div class="card-body">
             <div class="text-start">
@@ -56,147 +58,144 @@
         </div>
       </div>
       <!-- Main Content Section -->
-      <div id="mainContent" class="d-none">
-      <!-- Dataset Selection Section -->
-      <div id="datasetContainer" class="row g-4 mb-4 justify-content-center">
-        <!-- Dataset cards will be dynamically inserted here -->
-      </div>
+      <div id="mainContent" class="mb-4 d-none">
+        <!-- App Description -->
+        <div class="text-center mb-4">
+          <p class="lead mb-1">Select a dataset to analyze its quality using AI-powered techniques.</p>
+          <p class="text-muted">Our tool identifies data issues, provides SDTM mappings, and offers actionable recommendations.</p>
+        </div>
+        
+        <!-- Dataset Selection Section -->
+        <div id="datasetContainer" class="row g-4 mb-4 justify-content-center">
+          <!-- Dataset cards will be dynamically inserted here -->
+        </div>
 
-      <!-- Analysis Controls -->
-      <div class="narrative mx-auto d-none text-center" id="analysisControls">
-        <div class="mb-3">
-          <button class="btn btn-primary" id="analyzeButton">Analyze Data</button>
-        </div>
-        <div class="mb-3 d-none" id="analysisLoader">
-          <div class="spinner-border text-primary" role="status" style="width: 2rem; height: 2rem;">
-            <span class="visually-hidden">Loading...</span>
+        <!-- Analysis Controls -->
+        <div class="narrative mx-auto d-none text-center" id="analysisControls">
+          <div class="mb-3">
+            <button class="btn btn-primary" id="analyzeButton">Analyze Data</button>
           </div>
-        </div>
-        <div class="mb-2 d-none" id="analysisProgressContainer">
-          <div class="progress" style="height: 8px;">
-            <div class="progress-bar" role="progressbar" style="width: 0%" id="analysisProgress"></div>
+          <div class="mb-3 d-none" id="analysisLoader">
+            <div class="spinner-border text-primary" role="status" style="width: 2rem; height: 2rem;">
+              <span class="visually-hidden">Loading...</span>
+            </div>
           </div>
+          <div class="mb-2 d-none" id="analysisProgressContainer">
+            <div class="progress" style="height: 8px;">
+              <div class="progress-bar" role="progressbar" style="width: 0%" id="analysisProgress"></div>
+            </div>
+          </div>
+          <div class="text-muted small d-none" id="analysisStatus"></div>
         </div>
-        <div class="text-muted small d-none" id="analysisStatus"></div>
-      </div>
 
-      <!-- Data Preview Section -->
-      <div class="card mb-4 narrative mx-auto d-none" id="previewCard">
-        <div class="card-header d-flex justify-content-between align-items-center">
-          <button class="btn btn-link text-decoration-none p-0 text-start text-dark" data-bs-toggle="collapse" data-bs-target="#previewCollapse">
-            <h5 class="mb-0"><span class="collapse-icon"></span>Data Preview</h5>
-          </button>
-          <span class="text-muted" id="selectedDataset"></span>
-        </div>
-        <div class="collapse show" id="previewCollapse">
-          <div class="card-body">
-            <div id="dataPreview" class="table-responsive overflow-auto">
-              <!-- Table will be inserted here -->
+        <!-- Tabs Navigation -->
+        <div class="narrative mx-auto mt-4 d-none" id="tabsContainer">
+          <!-- Section heading above the card -->
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4 class="mb-0">Analysis Results</h4>
+            <span class="text-muted" id="selectedDataset"></span>
+          </div>
+          
+          <div class="card">
+            <div class="card-header">
+              <ul class="nav nav-tabs card-header-tabs" id="analysisTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link active" id="preview-tab" data-bs-toggle="tab" data-bs-target="#preview-tab-pane" type="button" role="tab" aria-controls="preview-tab-pane" aria-selected="true">
+                    Data Preview
+                  </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link tab-disabled" id="column-desc-tab" data-bs-toggle="tab" data-bs-target="#column-desc-tab-pane" type="button" role="tab" aria-controls="column-desc-tab-pane" aria-selected="false">
+                    Column Descriptions
+                  </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link tab-disabled" id="sdtm-mapping-tab" data-bs-toggle="tab" data-bs-target="#sdtm-mapping-tab-pane" type="button" role="tab" aria-controls="sdtm-mapping-tab-pane" aria-selected="false">
+                    SDTM Mapping
+                  </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link tab-disabled" id="analysis-tab" data-bs-toggle="tab" data-bs-target="#analysis-tab-pane" type="button" role="tab" aria-controls="analysis-tab-pane" aria-selected="false">
+                    Code Generated
+                  </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link tab-disabled" id="issues-tab" data-bs-toggle="tab" data-bs-target="#issues-tab-pane" type="button" role="tab" aria-controls="issues-tab-pane" aria-selected="false">
+                    Issues
+                  </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link tab-disabled" id="results-tab" data-bs-toggle="tab" data-bs-target="#results-tab-pane" type="button" role="tab" aria-controls="results-tab-pane" aria-selected="false">
+                    Results
+                  </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link tab-disabled" id="summary-tab" data-bs-toggle="tab" data-bs-target="#summary-tab-pane" type="button" role="tab" aria-controls="summary-tab-pane" aria-selected="false">
+                    Summary
+                  </button>
+                </li>
+              </ul>
+            </div>
+            
+            <!-- Tab Content -->
+            <div class="card-body">
+              <div class="tab-content" id="analysisTabsContent">
+                <!-- Data Preview Tab -->
+                <div class="tab-pane fade show active" id="preview-tab-pane" role="tabpanel" aria-labelledby="preview-tab" tabindex="0">
+                  <div id="dataPreview" class="table-responsive overflow-auto">
+                    <!-- Data preview will be inserted here -->
+                  </div>
+                </div>
+                
+                <!-- Column Descriptions Tab -->
+                <div class="tab-pane fade" id="column-desc-tab-pane" role="tabpanel" aria-labelledby="column-desc-tab" tabindex="0">
+                  <div id="columnDescriptions" class="table-responsive overflow-auto">
+                    <!-- Column descriptions will be inserted here -->
+                  </div>
+                </div>
+                
+                <!-- SDTM Mapping Tab -->
+                <div class="tab-pane fade" id="sdtm-mapping-tab-pane" role="tabpanel" aria-labelledby="sdtm-mapping-tab" tabindex="0">
+                  <div id="sdtmMapping" class="table-responsive overflow-auto">
+                    <!-- SDTM mapping will be inserted here -->
+                  </div>
+                </div>
+                
+                <!-- Analysis Tab -->
+                <div class="tab-pane fade" id="analysis-tab-pane" role="tabpanel" aria-labelledby="analysis-tab" tabindex="0">
+                  <div id="analysisResult">
+                    <!-- Analysis results will be inserted here -->
+                  </div>
+                  <div id="pythonCode" class="bg-light p-3 rounded my-3 overflow-auto d-none">
+                    <h6>Generated Python Code:</h6>
+                    <pre><code id="codeContent"></code></pre>
+                  </div>
+                </div>
+                
+                <!-- Issues Tab -->
+                <div class="tab-pane fade" id="issues-tab-pane" role="tabpanel" aria-labelledby="issues-tab" tabindex="0">
+                  <div id="issuesResult" class="table-responsive overflow-auto">
+                    <!-- Rows with issues will be inserted here -->
+                  </div>
+                </div>
+                
+                <!-- Results Tab -->
+                <div class="tab-pane fade" id="results-tab-pane" role="tabpanel" aria-labelledby="results-tab" tabindex="0">
+                  <div id="resultsTable" class="table-responsive overflow-auto">
+                    <!-- Results table will be inserted here -->
+                  </div>
+                </div>
+                
+                <!-- Summary Tab -->
+                <div class="tab-pane fade" id="summary-tab-pane" role="tabpanel" aria-labelledby="summary-tab" tabindex="0">
+                  <div id="summaryResult">
+                    <!-- Summary will be inserted here -->
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-
-      <!-- Column Descriptions Section -->
-      <div class="card mb-4 d-none narrative mx-auto" id="columnDescCard">
-        <div class="card-header">
-          <button class="btn btn-link text-decoration-none p-0 text-start text-dark" data-bs-toggle="collapse" data-bs-target="#columnDescCollapse">
-            <h5 class="mb-0"><span class="collapse-icon"></span>Column Descriptions</h5>
-          </button>
-        </div>
-        <div class="collapse show" id="columnDescCollapse">
-          <div class="card-body">
-            <div id="columnDescriptions" class="table-responsive overflow-auto">
-              <!-- Column descriptions will be inserted here -->
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- SDTM Mapping Section -->
-      <div class="card mb-4 d-none narrative mx-auto" id="sdtmMappingCard">
-        <div class="card-header">
-          <button class="btn btn-link text-decoration-none p-0 text-start text-dark" data-bs-toggle="collapse" data-bs-target="#sdtmMappingCollapse">
-            <h5 class="mb-0"><span class="collapse-icon"></span>SDTM Mapping</h5>
-          </button>
-        </div>
-        <div class="collapse show" id="sdtmMappingCollapse">
-          <div class="card-body">
-            <div id="sdtmMapping" class="table-responsive overflow-auto">
-              <!-- SDTM mapping will be inserted here -->
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Analysis Section -->
-      <div class="card mb-4 d-none narrative mx-auto" id="analysisCard">
-        <div class="card-header">
-          <button class="btn btn-link text-decoration-none p-0 text-start text-dark" data-bs-toggle="collapse" data-bs-target="#analysisCollapse">
-            <h5 class="mb-0"><span class="collapse-icon"></span>Data Quality Analysis</h5>
-          </button>
-        </div>
-        <div class="collapse show" id="analysisCollapse">
-          <div class="card-body">
-            <div id="analysisResult">
-              <!-- Analysis results will be inserted here -->
-            </div>
-            <div id="pythonCode" class="bg-light p-3 rounded my-3 overflow-auto d-none">
-              <h6>Generated Python Code:</h6>
-              <pre><code id="codeContent"></code></pre>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Issues Section -->
-      <div class="card mb-4 d-none narrative mx-auto" id="issuesCard">
-        <div class="card-header">
-          <button class="btn btn-link text-decoration-none p-0 text-start text-dark" data-bs-toggle="collapse" data-bs-target="#issuesCollapse">
-            <h5 class="mb-0"><span class="collapse-icon"></span>Rows with Issues</h5>
-          </button>
-        </div>
-        <div class="collapse show" id="issuesCollapse">
-          <div class="card-body">
-            <div id="issuesResult" class="table-responsive overflow-auto">
-              <!-- Rows with issues will be inserted here -->
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Results Table Section -->
-      <div class="card mb-4 d-none narrative mx-auto" id="resultsTableCard">
-        <div class="card-header">
-          <button class="btn btn-link text-decoration-none p-0 text-start text-dark" data-bs-toggle="collapse" data-bs-target="#resultsTableCollapse">
-            <h5 class="mb-0"><span class="collapse-icon"></span>Analysis Results</h5>
-          </button>
-        </div>
-        <div class="collapse show" id="resultsTableCollapse">
-          <div class="card-body">
-            <div id="resultsTable" class="table-responsive overflow-auto">
-              <!-- Results table will be inserted here -->
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Summary Section -->
-      <div class="card mb-4 d-none narrative mx-auto" id="summaryCard">
-        <div class="card-header">
-          <button class="btn btn-link text-decoration-none p-0 text-start text-dark" data-bs-toggle="collapse" data-bs-target="#summaryCollapse">
-            <h5 class="mb-0"><span class="collapse-icon"></span>Summary</h5>
-          </button>
-        </div>
-        <div class="collapse show" id="summaryCollapse">
-          <div class="card-body">
-            <div id="summaryResult">
-              <!-- Summary will be inserted here -->
-            </div>
-          </div>
-        </div>
-      </div>
-
       </div>
     </div>
 

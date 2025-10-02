@@ -11,28 +11,49 @@ const analysisLoader = document.getElementById("analysisLoader");
 const analysisProgressContainer = document.getElementById("analysisProgressContainer");
 const analysisProgress = document.getElementById("analysisProgress");
 const analysisStatus = document.getElementById("analysisStatus");
+const tabsContainer = document.getElementById("tabsContainer");
+
+// Content containers
 const dataPreview = document.getElementById("dataPreview");
-const previewCard = document.getElementById("previewCard");
-const columnDescCard = document.getElementById("columnDescCard");
 const columnDescriptions = document.getElementById("columnDescriptions");
-const sdtmMappingCard = document.getElementById("sdtmMappingCard");
 const sdtmMapping = document.getElementById("sdtmMapping");
-const analysisCard = document.getElementById("analysisCard");
-const summaryCard = document.getElementById("summaryCard");
-const issuesCard = document.getElementById("issuesCard");
 const analysisResult = document.getElementById("analysisResult");
-const summaryResult = document.getElementById("summaryResult");
 const issuesResult = document.getElementById("issuesResult");
-const analyzeButton = document.getElementById("analyzeButton");
+const resultsTable = document.getElementById("resultsTable");
+const summaryResult = document.getElementById("summaryResult");
 const pythonCode = document.getElementById("pythonCode");
 const codeContent = document.getElementById("codeContent");
 const selectedDatasetSpan = document.getElementById("selectedDataset");
+const analyzeButton = document.getElementById("analyzeButton");
+
+// Tab elements
+const previewTab = document.getElementById("preview-tab");
+const columnDescTab = document.getElementById("column-desc-tab");
+const sdtmMappingTab = document.getElementById("sdtm-mapping-tab");
+const analysisTab = document.getElementById("analysis-tab");
+const issuesTab = document.getElementById("issues-tab");
+const resultsTab = document.getElementById("results-tab");
+const summaryTab = document.getElementById("summary-tab");
 
 // Global variables
 let fileData = null;
 let parsedData = null;
 let token = '';
 let config = null;
+
+// Tab management functions
+function enableTab(tabElement) {
+  if (tabElement) {
+    tabElement.classList.remove('tab-disabled');
+  }
+}
+
+function activateTab(tabElement) {
+  if (tabElement) {
+    const tab = new bootstrap.Tab(tabElement);
+    tab.show();
+  }
+}
 
 async function init() {
   try {
@@ -113,13 +134,23 @@ async function handleDatasetSelect(e) {
     // Show first 5 rows in preview
     updateAnalysisProgress(50, "Preparing data preview...");
     displayDataPreview(parsedData.slice(0, 6));
-    previewCard.classList.remove("d-none");
-    getColumnDescriptions(parsedData);
+    
+    // Show tabs container and analysis controls
+    tabsContainer.classList.remove("d-none");
     analysisControls.classList.remove("d-none");
+    
+    // Enable the preview tab (already active by default)
+    enableTab(previewTab);
+    
+    // Get column descriptions
+    await getColumnDescriptions(parsedData);
+    
+    // Get SDTM mapping
+    updateAnalysisProgress(75, "Generating SDTM mappings...");
+    await getSDTMMapping(parsedData[0]);
     
     // Complete the loading
     updateAnalysisProgress(100, "Dataset loaded!");
-    await getSDTMMapping(parsedData[0]);
     setTimeout(() => hideAnalysisProgress(), 1000);
   } catch (error) {
     console.error(error);
@@ -141,7 +172,8 @@ analyzeButton.addEventListener("click", analyzeData);
 // Parse CSV file using XLSX
 function parseFile(data) {
   try {
-    const workbook = XLSX.read(data, { type: 'binary' });
+    // Use 'array' type for ArrayBuffer data
+    const workbook = XLSX.read(new Uint8Array(data), { type: 'array' });
     const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
     return XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: '' });
   } catch (error) {
@@ -162,7 +194,7 @@ function displayDataPreview(data) {
   // Table headers
   tableHTML += "<thead><tr>";
   headers.forEach((header) => {
-    tableHTML += `<th>${header}</th>`;
+    tableHTML += `<th>${header !== undefined && header !== null ? header : ""}</th>`;
   });
   tableHTML += "</tr></thead>";
 
@@ -171,14 +203,15 @@ function displayDataPreview(data) {
   rows.forEach((row) => {
     tableHTML += "<tr>";
     row.forEach((cell) => {
-      tableHTML += `<td>${cell !== undefined && cell !== null ? cell : ""}</td>`;
+      // Safely convert values to strings and escape any HTML
+      const safeValue = cell !== undefined && cell !== null ? String(cell) : "";
+      tableHTML += `<td>${safeValue}</td>`;
     });
     tableHTML += "</tr>";
   });
   tableHTML += "</tbody></table>";
 
   dataPreview.innerHTML = tableHTML;
-  previewCard.classList.remove("d-none");
 }
 
 // Analysis progress functions
@@ -199,9 +232,6 @@ function showAnalysisProgress() {
 
 // Display results in a table format
 function displayResultsTable(issuesData, totalRows) {
-  const resultsTableCard = document.getElementById('resultsTableCard');
-  const resultsTable = document.getElementById('resultsTable');
-
   const tableHTML = `
     <table class="table table-striped table-bordered">
       <thead>
@@ -219,7 +249,6 @@ function displayResultsTable(issuesData, totalRows) {
   `;
 
   resultsTable.innerHTML = tableHTML;
-  resultsTableCard.classList.remove('d-none');
 }
 
 // Generate table rows for results
@@ -347,7 +376,9 @@ function displayIssueRows(issueRows) {
     // Add data cells
     if (issueRow.row) {
       Object.values(issueRow.row).forEach((value) => {
-        tableHTML += `<td>${value !== undefined && value !== null ? value : ""}</td>`;
+        // Safely convert values to strings and escape any HTML
+        const safeValue = value !== undefined && value !== null ? String(value) : "";
+        tableHTML += `<td>${safeValue}</td>`;
       });
     }
     
@@ -363,11 +394,7 @@ function displayIssueRows(issueRows) {
 async function getSDTMMapping(headers) {
   if (!headers || !headers.length) return;
 
-  // Show the SDTM mapping card
-  sdtmMappingCard.classList.remove("d-none");
   sdtmMapping.innerHTML = "";
-  showAnalysisProgress();
-  updateAnalysisProgress(25, "Generating SDTM mappings...");
 
   // System prompt for SDTM mapping
   const systemPrompt = `You are a CDISC SDTM expert tasked with mapping raw clinical data to SDTM domains and variables.
@@ -386,12 +413,12 @@ Format your response in markdown table format with these columns:
     const response = await callLLM(systemPrompt, headers.join(", "));
     // Display the table using marked for markdown parsing
     sdtmMapping.innerHTML = marked.parse(response);
-    updateAnalysisProgress(100, "SDTM mapping complete!");
-    setTimeout(() => hideAnalysisProgress(), 1000);
+    
+    // Enable the SDTM mapping tab
+    enableTab(sdtmMappingTab);
   } catch (error) {
     console.error("Error getting SDTM mapping:", error);
     sdtmMapping.innerHTML = `<div class="alert alert-danger">Error getting SDTM mapping: ${error.message}</div>`;
-    hideAnalysisProgress();
   }
 }
 
@@ -399,8 +426,6 @@ Format your response in markdown table format with these columns:
 async function getColumnDescriptions(data) {
   if (!data || !data.length) return;
   
-  // Show the column descriptions card
-  columnDescCard.classList.remove("d-none");
   columnDescriptions.innerHTML = "";
   
   // Get the dataset name from the selected dataset
@@ -429,6 +454,9 @@ async function getColumnDescriptions(data) {
   
   // Display the table
   columnDescriptions.innerHTML = tableHTML;
+  
+  // Enable the column descriptions tab
+  enableTab(columnDescTab);
 }
 
 // Convert array data to object format for easier processing
@@ -453,7 +481,6 @@ async function analyzeData() {
   }
 
   // Setup UI and prepare data
-  analysisCard.classList.remove("d-none");
   showAnalysisProgress();
   updateAnalysisProgress(0, "Analyzing data...");
   analysisResult.innerHTML = "";
@@ -514,19 +541,27 @@ Only return valid Python code without any explanations or markdown formatting.  
 
     // Display analysis results
     updateAnalysisProgress(75, "Processing results...");
+    
+    // Enable and activate the analysis tab
+    enableTab(analysisTab);
+    activateTab(analysisTab);
 
     // Get and display formatted issues
     updateAnalysisProgress(83, "Generating Final Table...");
     const issuesData = await getFinalTableData(analysisResults);
     displayResultsTable(issuesData, parsedData.length - 1); // -1 to exclude header row
+    
+    // Enable the results tab
+    enableTab(resultsTab);
 
     if (analysisResults.issue_rows && analysisResults.issue_rows.length > 0) {
-      issuesCard.classList.remove("d-none");
       displayIssueRows(analysisResults.issue_rows);
+      
+      // Enable the issues tab
+      enableTab(issuesTab);
     }
 
     // Generate summary
-    summaryCard.classList.remove("d-none");
     updateAnalysisProgress(90, "Generating summary...");
 
     const summarizationPrompt = `You are an expert data quality analyst. 
@@ -542,6 +577,10 @@ For any repeated values found in the data, suggest alternative values that would
     );
     const summary = await callLLM(summarizationPrompt, serializedResults);
     summaryResult.innerHTML = marked.parse(summary);
+    
+    // Enable the summary tab
+    enableTab(summaryTab);
+    
     updateAnalysisProgress(100, "Analysis complete!");
     setTimeout(() => hideAnalysisProgress(), 1500); // Keep success state visible briefly
   } catch (error) {
