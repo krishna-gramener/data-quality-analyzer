@@ -586,8 +586,7 @@ Each issue should have:
 - columnName: The name of the column where the issue was found. IMPORTANT: Use EXACTLY the same column name as provided in the headers list above.
 - fixValue: A specific value that can replace the problematic value to fix the issue
 
-IMPORTANT: A single row may have multiple issues in different columns. In such cases, create separate issue objects for each problem, but with the same issueRowIndex. For example, if row 5 has issues in both the "Name" and "Age" columns, create two separate issue objects with issueRowIndex=5 but different issueId, columnName, and fixValue.
-
+IMPORTANT: A single row may have multiple issues in different columns. In such cases, create separate issue objects for each problem, but with the same issueRowIndex. For example, if row 5 has issues in both the "Name" and "Age" columns, create two separate issue objects with issueRowIndex=5 but different issueId, columnName, and fixValue. Suggest values only where there are missing values or inconsistent casing.No need to create issue objects for duplicate values.
 Make sure the response is valid JSON and follows the exact schema.`;
 
   try {
