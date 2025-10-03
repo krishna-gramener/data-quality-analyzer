@@ -40,6 +40,8 @@ let fileData = null;
 let parsedData = null;
 let token = '';
 let config = null;
+let fixedData = null; // Store fixed data for download
+let appliedFixes = []; // Track applied fixes
 
 // Tab management functions
 function enableTab(tabElement) {
@@ -123,6 +125,16 @@ async function handleDatasetSelect(e) {
   e.target.classList.replace('btn-outline-primary', 'btn-primary');
 
   try {
+    // Reset fix-related variables when switching datasets
+    fixedData = null;
+    appliedFixes = [];
+    
+    // Reset the update summary if it exists
+    const fixSummary = document.getElementById('fixSummary');
+    if (fixSummary) {
+      fixSummary.innerHTML = '<span class="text-muted">No updates applied yet</span>';
+    }
+    
     showAnalysisProgress();
     updateAnalysisProgress(0, "Loading dataset...");
     const response = await fetch(`dataset/${datasetName}`);
@@ -232,6 +244,11 @@ function showAnalysisProgress() {
 
 // Display results in a table format
 function displayResultsTable(issuesData, totalRows) {
+  // Initialize fixedData as a deep copy of parsedData if not already initialized
+  if (!fixedData) {
+    fixedData = JSON.parse(JSON.stringify(parsedData));
+  }
+  
   const tableHTML = `
     <table class="table table-striped table-bordered">
       <thead>
@@ -240,6 +257,8 @@ function displayResultsTable(issuesData, totalRows) {
           <th>Status</th>
           <th>Issue</th>
           <th>Suggestion</th>
+          <th>Fix Value</th>
+          <th>Action</th>
         </tr>
       </thead>
       <tbody>
@@ -248,35 +267,270 @@ function displayResultsTable(issuesData, totalRows) {
     </table>
   `;
 
-  resultsTable.innerHTML = tableHTML;
+  // Add download button and changes summary for fixed data
+  const downloadButtonHTML = `
+    <div class="card mt-3">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <h6 class="mb-0">Data Updates</h6>
+            <p class="text-muted small mb-0">Apply updates to the data and download the corrected CSV</p>
+            <div id="fixSummary" class="small mt-2">
+              <span class="text-muted">No updates applied yet</span>
+            </div>
+          </div>
+          <button id="downloadFixedData" class="btn btn-success" disabled>
+            <i class="bi bi-download"></i> Download Updated CSV
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  resultsTable.innerHTML = tableHTML + downloadButtonHTML;
+  
+  // Add event listener to download button
+  document.getElementById('downloadFixedData').addEventListener('click', downloadFixedCSV);
+  
+  // Add event listeners to fix buttons
+  document.querySelectorAll('.fix-issue-btn').forEach(button => {
+    button.addEventListener('click', applyFix);
+  });
 }
 
 // Generate table rows for results
 function generateTableRows(issuesData, totalRows) {
   let rows = '';
-  const issueMap = new Map(issuesData.issues.map(issue => [issue.issueRowIndex, issue]));
+  
+  // Group issues by row index
+  const issuesByRow = {};
+  issuesData.issues.forEach(issue => {
+    if (!issuesByRow[issue.issueRowIndex]) {
+      issuesByRow[issue.issueRowIndex] = [];
+    }
+    issuesByRow[issue.issueRowIndex].push(issue);
+  });
 
   for (let i = 0; i < totalRows; i++) {
-    const issue = issueMap.get(i);
-    if (issue) {
-      rows += `
-        <tr>
-          <td>${i}</td>
-          <td><span class="badge bg-danger">Issue</span></td>
-          <td>${issue.issue}</td>
-          <td>${issue.suggestion}</td>
-        </tr>`;
+    const rowIssues = issuesByRow[i] || [];
+    
+    if (rowIssues.length > 0) {
+      // For rows with issues
+      let isFirstIssue = true;
+      
+      // Create a row for each issue in this row
+      rowIssues.forEach((issue, issueIndex) => {
+        const columnName = issue.columnName || '';
+        const fixValue = issue.fixValue || '';
+        const issueId = issue.issueId || `row${i}_issue${issueIndex}`;
+        
+        rows += `
+          <tr${issueIndex > 0 ? ' class="table-light"' : ''}>
+            ${isFirstIssue ? `<td rowspan="${rowIssues.length}">${i}</td>` : ''}
+            <td>${isFirstIssue ? 
+              `<span class="badge bg-danger">${rowIssues.length > 1 ? `${rowIssues.length} Issues` : 'Issue'}</span>` : 
+              ''}</td>
+            <td>${issue.issue}</td>
+            <td>${issue.suggestion}</td>
+            <td><code>${fixValue}</code>${columnName ? ` <small class="text-muted">(in ${columnName})</small>` : ''}</td>
+            <td>
+              <button class="btn btn-sm btn-outline-primary fix-issue-btn" 
+                data-issue-id="${issueId}"
+                data-row="${i}" 
+                data-column="${columnName}" 
+                data-value="${fixValue}">
+                Apply Update
+              </button>
+            </td>
+          </tr>`;
+          
+        isFirstIssue = false;
+      });
     } else {
+      // For rows without issues
       rows += `
         <tr>
           <td>${i}</td>
           <td><span class="badge bg-success">No Issues</span></td>
           <td></td>
           <td></td>
+          <td></td>
+          <td></td>
         </tr>`;
     }
   }
   return rows;
+}
+
+// Apply fix to data
+function applyFix(e) {
+  const button = e.target;
+  const rowIndex = parseInt(button.dataset.row, 10);
+  const columnName = button.dataset.column;
+  const fixValue = button.dataset.value;
+  const issueId = button.dataset.issueId;
+  
+  console.log(`Applying fix to row ${rowIndex}, column ${columnName}, value: ${fixValue}`);
+  
+  // Find the column index based on column name
+  const headers = fixedData[0];
+  // Try exact match first
+  let columnIndex = headers.findIndex(header => header === columnName);
+  
+  // If exact match fails, try case-insensitive match
+  if (columnIndex === -1 && columnName) {
+    columnIndex = headers.findIndex(header => 
+      header.toLowerCase() === columnName.toLowerCase());
+  }
+  
+  // If still no match, try fuzzy match (check if column name is contained in header)
+  if (columnIndex === -1 && columnName) {
+    columnIndex = headers.findIndex(header => 
+      header.toLowerCase().includes(columnName.toLowerCase()) || 
+      columnName.toLowerCase().includes(header.toLowerCase()));
+  }
+  
+  console.log(`Column index found: ${columnIndex}, headers:`, headers, 'for column name:', columnName);
+  
+  // Validate indices
+  if (columnIndex === -1) {
+    console.error(`Could not find column: ${columnName}`);
+    alert(`Could not find column: ${columnName}`);
+    return;
+  }
+  
+  // if (rowIndex < 1 || rowIndex >= fixedData.length) {
+  //   console.error(`Invalid row index: ${rowIndex}`);
+  //   alert(`Invalid row index: ${rowIndex}`);
+  //   return;
+  // }
+  
+  // Store the old value for display
+  const oldValue = fixedData[rowIndex+1][columnIndex];
+  console.log(`Old value: ${oldValue}, New value: ${fixValue}`);
+  
+  // Apply the fix to the data
+  fixedData[rowIndex+1][columnIndex] = fixValue;
+  
+  // Track this fix
+  appliedFixes.push({
+    rowIndex,
+    columnName,
+    oldValue,
+    newValue: fixValue,
+    timestamp: new Date()
+  });
+  
+  // Update button appearance to show fix was applied
+  button.classList.remove('btn-outline-primary');
+  button.classList.add('btn-success');
+  button.textContent = 'Updated';
+  button.disabled = true;
+  
+  // Enable the download button
+  const downloadButton = document.getElementById('downloadFixedData');
+  downloadButton.disabled = false;
+  
+  // Update fix summary
+  updateFixSummary();
+  
+  // Update the cell to show it was fixed
+  const row = button.closest('tr');
+  row.classList.add('table-success');
+  row.classList.remove('table-light');
+  
+  // Add a tooltip to show the change
+  const fixValueCell = row.querySelector('td:nth-child(5)');
+  if (fixValueCell) {
+    fixValueCell.innerHTML = `<code>${fixValue}</code>${columnName ? ` <small class="text-muted">(in ${columnName})</small>` : ''}<br>
+      <small class="text-success"><i class="bi bi-check-circle-fill"></i> Changed from: <del>${oldValue}</del></small>`;
+  }
+  
+  // Check if all issues for this row have been fixed
+  const rowIssueButtons = document.querySelectorAll(`.fix-issue-btn[data-row="${rowIndex}"]`);
+  const allFixed = Array.from(rowIssueButtons).every(btn => btn.disabled || btn === button);
+  
+  // If this is the first issue in a row with multiple issues, update the status badge
+  const statusCell = row.querySelector('td:nth-child(2)');
+  if (statusCell && statusCell.querySelector('.badge')) {
+    statusCell.querySelector('.badge').className = 'badge bg-warning';
+    statusCell.querySelector('.badge').textContent = 'Fixing';
+    
+    // If all issues are fixed, update to 'Updated'
+    if (allFixed) {
+      const allStatusCells = document.querySelectorAll(`tr td:nth-child(2) .badge`);
+      allStatusCells.forEach(badge => {
+        if (badge.closest('tr').querySelector(`.fix-issue-btn[data-row="${rowIndex}"]`)) {
+          badge.className = 'badge bg-success';
+          badge.textContent = 'Updated';
+        }
+      });
+    }
+  }
+  
+  console.log('Updated fixedData:', fixedData);
+}
+
+// Download fixed CSV
+function downloadFixedCSV() {
+  if (!fixedData || fixedData.length === 0) {
+    console.error('No fixed data available for download');
+    return;
+  }
+  
+  try {
+    // Convert the fixed data to CSV format with proper escaping
+    let csvContent = '';
+    fixedData.forEach(row => {
+      // Properly escape CSV values
+      const escapedRow = row.map(value => {
+        // Convert to string and handle null/undefined
+        const str = value !== null && value !== undefined ? String(value) : '';
+        // Escape quotes and wrap in quotes if needed
+        if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+          return '"' + str.replace(/"/g, '""') + '"';
+        }
+        return str;
+      });
+      csvContent += escapedRow.join(',') + '\n';
+    });
+    
+    // Create a blob and download link
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    
+    // Create a temporary link and trigger download
+    const link = document.createElement('a');
+    const filename = selectedDatasetSpan.textContent.replace('.csv', '_updated.csv');
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    
+    // Show feedback to user
+    const downloadButton = document.getElementById('downloadFixedData');
+    const originalText = downloadButton.innerHTML;
+    downloadButton.innerHTML = '<i class="bi bi-check-circle"></i> Downloaded!';
+    downloadButton.classList.replace('btn-success', 'btn-outline-success');
+    
+    // Trigger download
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Clean up URL object
+    URL.revokeObjectURL(url);
+    
+    // Reset button after a delay
+    setTimeout(() => {
+      downloadButton.innerHTML = originalText;
+      downloadButton.classList.replace('btn-outline-success', 'btn-success');
+    }, 2000);
+    
+    console.log(`CSV file ${filename} downloaded successfully`);
+  } catch (error) {
+    console.error('Error downloading CSV:', error);
+    alert('Error downloading CSV: ' + error.message);
+  }
 }
 
 // Convert BigInt values to numbers in an object
@@ -304,21 +558,35 @@ function convertBigIntToNumber(obj) {
 
 // Get formatted issues data from LLM
 async function getFinalTableData(issueRows) {
+  // Extract headers to provide to the LLM
+  const headers = parsedData && parsedData.length > 0 ? parsedData[0] : [];
+  const headersList = headers.join(', ');
+  
   const issuesPrompt = `You are a data quality analyst. Based on the analysis results, return a JSON object with the following schema:
 {
   "issues": [
     {
       "issueRowIndex": integer,
+      "issueId": string,  // A unique identifier for this issue
       "issue": string,
-      "suggestion": string
+      "suggestion": string,
+      "columnName": string,
+      "fixValue": string
     }
   ]
 }
 
+The dataset has the following column headers: ${headersList}
+
 Each issue should have:
 - issueRowIndex: The row number where the issue was found
+- issueId: A unique identifier for this issue (e.g., "row5_col3" for row 5, column 3)
 - issue: A clear description of the issue
 - suggestion: A specific suggestion to fix the issue. Suggest with values relevant for current context.
+- columnName: The name of the column where the issue was found. IMPORTANT: Use EXACTLY the same column name as provided in the headers list above.
+- fixValue: A specific value that can replace the problematic value to fix the issue
+
+IMPORTANT: A single row may have multiple issues in different columns. In such cases, create separate issue objects for each problem, but with the same issueRowIndex. For example, if row 5 has issues in both the "Name" and "Age" columns, create two separate issue objects with issueRowIndex=5 but different issueId, columnName, and fixValue.
 
 Make sure the response is valid JSON and follows the exact schema.`;
 
@@ -341,6 +609,42 @@ function hideAnalysisProgress() {
   analysisStatus.classList.add("d-none");
   analyzeButton.disabled = false;
   analysisProgress.style.width = "0%";
+}
+
+// Update fix summary display
+function updateFixSummary() {
+  const fixSummary = document.getElementById('fixSummary');
+  if (!fixSummary) return;
+  
+  if (appliedFixes.length === 0) {
+    fixSummary.innerHTML = '<span class="text-muted">No updates applied yet</span>';
+    return;
+  }
+  
+  // Group updates by column
+  const updatesByColumn = {};
+  appliedFixes.forEach(update => {
+    if (!updatesByColumn[update.columnName]) {
+      updatesByColumn[update.columnName] = [];
+    }
+    updatesByColumn[update.columnName].push(update);
+  });
+  
+  // Create summary text
+  let summaryHTML = `<span class="text-success"><strong>${appliedFixes.length} update${appliedFixes.length > 1 ? 's' : ''} applied</strong></span>`;
+  
+  // Add column breakdown
+  const columnList = Object.keys(updatesByColumn);
+  if (columnList.length > 0) {
+    summaryHTML += '<ul class="mb-0 ps-3">';
+    columnList.forEach(column => {
+      const count = updatesByColumn[column].length;
+      summaryHTML += `<li>${column}: ${count} update${count > 1 ? 's' : ''}</li>`;
+    });
+    summaryHTML += '</ul>';
+  }
+  
+  fixSummary.innerHTML = summaryHTML;
 }
 
 // Display rows with issues
