@@ -68,7 +68,7 @@ async function init() {
     createDatasetCards();
 
     // Get API token
-    const response = await fetch("https://llmfoundry.straive.com/token", { credentials: "include" });
+    const response = await fetch("https://llmfoundry.straivedemo.com/token", { credentials: "include" });
     const data = await response.json();
     token = data.token;
   } catch (error) {
@@ -896,7 +896,7 @@ For any repeated values found in the data, suggest alternative values that would
 // Call OpenAI API
 async function callLLM(systemPrompt, userMessage) {
   try {
-    const response = await fetch("https://llmfoundry.straive.com/openai/v1/chat/completions", {
+    const response = await fetch("https://llmfoundry.straivedemo.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}:data-quality-analyst`,
