@@ -49,3 +49,5 @@ A web application for automated data quality analysis powered by AI. Upload your
 ## Browser Compatibility
 
 This application works best in modern browsers that support ES6+ features and Web Workers.
+
+**Note:** This is a demo. It contains no confidential data/IP.
